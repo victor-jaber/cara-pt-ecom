@@ -155,8 +155,8 @@ export async function registerRoutes(
     }
   });
 
-  // Products routes (protected - requires approval)
-  app.get("/api/products", isAuthenticated, isApproved, async (req, res) => {
+  // Products routes (public - both international guests and approved Portugal users can view)
+  app.get("/api/products", async (req, res) => {
     try {
       const products = await storage.getActiveProducts();
       res.json(products);
@@ -166,7 +166,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/products/:slug", isAuthenticated, isApproved, async (req, res) => {
+  app.get("/api/products/:slug", async (req, res) => {
     try {
       const product = await storage.getProductBySlug(req.params.slug);
       if (!product) {
