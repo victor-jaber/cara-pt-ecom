@@ -144,7 +144,7 @@ export async function registerRoutes(
   // Public products endpoint (for landing page preview)
   app.get("/api/products/preview", async (req, res) => {
     try {
-      const allProducts = await storage.getAllProducts();
+      const allProducts = await storage.getActiveProducts();
       res.json(allProducts.slice(0, 4));
     } catch (error) {
       console.error("Error fetching products preview:", error);
@@ -155,7 +155,7 @@ export async function registerRoutes(
   // Products routes (protected - requires approval)
   app.get("/api/products", isAuthenticated, isApproved, async (req, res) => {
     try {
-      const products = await storage.getAllProducts();
+      const products = await storage.getActiveProducts();
       res.json(products);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -488,10 +488,34 @@ export async function registerRoutes(
   app.delete("/api/admin/products/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       await storage.deleteProduct(req.params.id);
-      res.json({ success: true });
+      res.json({ success: true, message: "Produto arquivado com sucesso" });
     } catch (error) {
-      console.error("Error deleting product:", error);
-      res.status(500).json({ message: "Failed to delete product" });
+      console.error("Error archiving product:", error);
+      res.status(500).json({ message: "Failed to archive product" });
+    }
+  });
+
+  app.post("/api/admin/products/:id/restore", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const product = await storage.restoreProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Error restoring product:", error);
+      res.status(500).json({ message: "Failed to restore product" });
+    }
+  });
+
+  // Admin endpoint to get all products (including inactive)
+  app.get("/api/admin/products", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching all products:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
     }
   });
 

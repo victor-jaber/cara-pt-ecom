@@ -54,6 +54,12 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Promotion rule type for quantity-based discounts
+export type PromotionRule = {
+  minQuantity: number;
+  pricePerUnit: string;
+};
+
 // Products table
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -69,6 +75,8 @@ export const products = pgTable("products", {
   applicationZones: text("application_zones"),
   infodmCode: varchar("infodm_code"),
   inStock: boolean("in_stock").default(true),
+  isActive: boolean("is_active").default(true).notNull(),
+  promotionRules: jsonb("promotion_rules").$type<PromotionRule[]>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

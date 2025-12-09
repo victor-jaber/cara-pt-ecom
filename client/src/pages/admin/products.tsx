@@ -29,7 +29,9 @@ import {
   Search, 
   Package, 
   Pencil,
-  Trash2
+  Trash2,
+  RotateCcw,
+  Archive
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +69,7 @@ export default function AdminProducts() {
   });
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/admin/products"],
   });
 
   const createMutation = useMutation({
@@ -76,6 +78,7 @@ export default function AdminProducts() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({ title: "Produto Criado", description: "O produto foi criado com sucesso." });
       setDialogOpen(false);
@@ -92,6 +95,7 @@ export default function AdminProducts() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({ title: "Produto Atualizado", description: "O produto foi atualizado com sucesso." });
       setDialogOpen(false);
@@ -108,11 +112,27 @@ export default function AdminProducts() {
       return apiRequest("DELETE", `/api/admin/products/${id}`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: "Produto Eliminado", description: "O produto foi eliminado com sucesso." });
+      toast({ title: "Produto Arquivado", description: "O produto foi arquivado com sucesso." });
     },
     onError: () => {
-      toast({ title: "Erro", description: "Não foi possível eliminar o produto.", variant: "destructive" });
+      toast({ title: "Erro", description: "Não foi possível arquivar o produto.", variant: "destructive" });
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/admin/products/${id}/restore`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Produto Restaurado", description: "O produto foi restaurado com sucesso." });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível restaurar o produto.", variant: "destructive" });
     },
   });
 
@@ -220,7 +240,7 @@ export default function AdminProducts() {
       ) : (
         <div className="grid gap-4">
           {filteredProducts.map((product) => (
-            <Card key={product.id} data-testid={`product-card-${product.id}`}>
+            <Card key={product.id} className={!product.isActive ? "opacity-60" : ""} data-testid={`product-card-${product.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -237,6 +257,12 @@ export default function AdminProducts() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{product.name}</h3>
+                      {!product.isActive && (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <Archive className="h-3 w-3 mr-1" />
+                          Arquivado
+                        </Badge>
+                      )}
                       <Badge variant={product.inStock ? "default" : "secondary"}>
                         {product.inStock ? "Em Stock" : "Sem Stock"}
                       </Badge>
@@ -244,7 +270,7 @@ export default function AdminProducts() {
                     <p className="text-sm text-muted-foreground truncate">
                       {product.shortDescription || product.description}
                     </p>
-                    <p className="font-medium mt-1">€{parseFloat(product.price).toFixed(2)}</p>
+                    <p className="font-medium mt-1">{parseFloat(product.price).toFixed(2)}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -255,15 +281,27 @@ export default function AdminProducts() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteMutation.mutate(product.id)}
-                      disabled={deleteMutation.isPending}
-                      data-testid={`button-delete-${product.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {product.isActive ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(product.id)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-archive-${product.id}`}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => restoreMutation.mutate(product.id)}
+                        disabled={restoreMutation.isPending}
+                        data-testid={`button-restore-${product.id}`}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

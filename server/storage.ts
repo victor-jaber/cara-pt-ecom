@@ -40,11 +40,13 @@ export interface IStorage {
 
   // Product operations
   getAllProducts(): Promise<Product[]>;
+  getActiveProducts(): Promise<Product[]>;
   getProductById(id: string): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
+  restoreProduct(id: string): Promise<Product | undefined>;
 
   // Cart operations
   getCartItems(userId: string): Promise<CartItemWithProduct[]>;
@@ -140,33 +142,50 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(products).orderBy(desc(products.createdAt));
   }
 
+  async getActiveProducts(): Promise<Product[]> {
+    return await db.select().from(products).where(eq(products.isActive, true)).orderBy(desc(products.createdAt));
+  }
+
   async getProductById(id: string): Promise<Product | undefined> {
     const [product] = await db.select().from(products).where(eq(products.id, id));
     return product;
   }
 
   async getProductBySlug(slug: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.slug, slug));
+    const [product] = await db.select().from(products).where(and(eq(products.slug, slug), eq(products.isActive, true)));
     return product;
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await db.insert(products).values(product).returning();
+    const [newProduct] = await db.insert(products).values(product as any).returning();
     return newProduct;
   }
 
   async updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined> {
     const [updated] = await db
       .update(products)
-      .set({ ...product, updatedAt: new Date() })
+      .set({ ...product, updatedAt: new Date() } as any)
       .where(eq(products.id, id))
       .returning();
     return updated;
   }
 
   async deleteProduct(id: string): Promise<boolean> {
-    const result = await db.delete(products).where(eq(products.id, id));
-    return true;
+    const [updated] = await db
+      .update(products)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return !!updated;
+  }
+
+  async restoreProduct(id: string): Promise<Product | undefined> {
+    const [updated] = await db
+      .update(products)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
   }
 
   // Cart operations
