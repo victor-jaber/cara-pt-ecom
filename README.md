@@ -117,11 +117,13 @@ Conecte-se ao container e execute:
 
 ```bash
 # Sincronizar schema da base de dados
-npm run db:push
+npx drizzle-kit push
 
 # Executar seed
 npx tsx scripts/seed.ts
 ```
+
+**Nota**: O Dockerfile instala todas as dependências para permitir executar migrações e seeds no container.
 
 ## Estrutura do Projeto
 
