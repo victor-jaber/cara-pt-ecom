@@ -1,8 +1,19 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { SiInstagram, SiFacebook, SiWhatsapp } from "react-icons/si";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Footer() {
+  const { isApproved } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleProductClick = (e: React.MouseEvent, href: string) => {
+    if (!isApproved) {
+      e.preventDefault();
+      setLocation("/login");
+    }
+  };
+
   return (
     <footer className="border-t bg-card">
       <div className="container mx-auto px-4 py-12">
@@ -46,16 +57,32 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold">Produtos</h4>
             <nav className="flex flex-col gap-2">
-              <Link href="/produto/cara-soft" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                href="/produto/cara-soft" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => handleProductClick(e, "/produto/cara-soft")}
+              >
                 CARA SOFT
               </Link>
-              <Link href="/produto/cara-mild" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                href="/produto/cara-mild" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => handleProductClick(e, "/produto/cara-mild")}
+              >
                 CARA MILD
               </Link>
-              <Link href="/produto/cara-hard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                href="/produto/cara-hard" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => handleProductClick(e, "/produto/cara-hard")}
+              >
                 CARA HARD
               </Link>
-              <Link href="/produto/cara-ultra" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                href="/produto/cara-ultra" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => handleProductClick(e, "/produto/cara-ultra")}
+              >
                 CARA ULTRA
               </Link>
             </nav>
@@ -111,6 +138,20 @@ export function Footer() {
             </p>
             <p className="text-sm text-muted-foreground">
               {new Date().getFullYear()} CARA. Todos os direitos reservados.
+            </p>
+          </div>
+          <div className="mt-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              Desenvolvido por{" "}
+              <a 
+                href="https://jabertechnology.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors underline"
+                data-testid="link-jaber-technology"
+              >
+                Jaber Technology Ltda
+              </a>
             </p>
           </div>
         </div>

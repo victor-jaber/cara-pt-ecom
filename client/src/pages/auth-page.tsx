@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,9 +68,19 @@ const professions = [
 ];
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const tabParam = urlParams.get("tab");
+  
+  const [isLogin, setIsLogin] = useState(tabParam !== "register");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (tabParam === "register") {
+      setIsLogin(false);
+    }
+  }, [tabParam]);
 
   const registerForm = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),

@@ -163,7 +163,7 @@ export function Header() {
                   Entrar
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/login?tab=register">
                 <Button size="sm" data-testid="button-register">
                   Solicitar Acesso
                 </Button>
