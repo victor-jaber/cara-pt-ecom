@@ -18,6 +18,8 @@ import { z } from "zod";
 export const userStatusEnum = pgEnum("user_status", ["pending", "approved", "rejected"]);
 export const userRoleEnum = pgEnum("user_role", ["customer", "admin"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "shipped", "delivered", "cancelled"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "completed", "failed", "refunded"]);
+export const paypalModeEnum = pgEnum("paypal_mode", ["sandbox", "live"]);
 
 // Session storage table (mandatory for Replit Auth)
 export const sessions = pgTable(
@@ -79,8 +81,24 @@ export const orders = pgTable("orders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   shippingAddress: text("shipping_address"),
   notes: text("notes"),
+  paymentMethod: varchar("payment_method"),
+  paymentStatus: paymentStatusEnum("payment_status").default("pending"),
+  paypalOrderId: varchar("paypal_order_id"),
+  paypalCaptureId: varchar("paypal_capture_id"),
+  paymentMetadata: jsonb("payment_metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// PayPal Settings table (singleton)
+export const paypalSettings = pgTable("paypal_settings", {
+  id: varchar("id").primaryKey().default("default"),
+  clientId: varchar("client_id"),
+  clientSecret: varchar("client_secret"),
+  mode: paypalModeEnum("mode").default("sandbox").notNull(),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"),
 });
 
 // Order items table
@@ -190,6 +208,11 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({
   createdAt: true,
 });
 
+export const insertPaypalSettingsSchema = createInsertSchema(paypalSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -218,3 +241,6 @@ export type OrderWithItems = Order & {
 export type CartItemWithProduct = CartItem & {
   product: Product;
 };
+
+export type PaypalSettings = typeof paypalSettings.$inferSelect;
+export type InsertPaypalSettings = z.infer<typeof insertPaypalSettingsSchema>;
