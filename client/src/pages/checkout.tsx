@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,9 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, CreditCard } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import type { CartItemWithProduct } from "@shared/schema";
+import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 import { PayPalButton } from "@/components/paypal-button";
 
 const checkoutSchema = z.object({
@@ -27,9 +30,14 @@ export default function Checkout() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [selectedShippingId, setSelectedShippingId] = useState<string>("");
 
   const { data: cartItems = [], isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
+  });
+
+  const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
+    queryKey: ["/api/shipping-options"],
   });
 
   const form = useForm<CheckoutForm>({
@@ -42,7 +50,10 @@ export default function Checkout() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: CheckoutForm) => {
-      const response = await apiRequest("POST", "/api/orders", data);
+      const response = await apiRequest("POST", "/api/orders", {
+        ...data,
+        shippingOptionId: selectedShippingId || undefined,
+      });
       return response;
     },
     onSuccess: () => {
@@ -67,14 +78,27 @@ export default function Checkout() {
     (acc, item) => acc + Number(item.product.price) * item.quantity,
     0
   );
-  const shipping = subtotal >= 300 ? 0 : 15;
-  const total = subtotal + shipping;
+
+  const selectedShipping = shippingOptions.find(opt => opt.id === selectedShippingId);
+  const shippingCost = selectedShipping ? Number(selectedShipping.price) : 0;
+  const total = subtotal + shippingCost;
 
   const onSubmit = (data: CheckoutForm) => {
+    if (shippingOptions.length > 0 && !selectedShippingId) {
+      toast({
+        title: "Selecione uma opção de envio",
+        description: "Por favor escolha uma opção de envio para continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
     createOrderMutation.mutate(data);
   };
 
-  if (isLoading) {
+  const isFormValid = form.watch("shippingAddress")?.length >= 10 && 
+    (shippingOptions.length === 0 || selectedShippingId);
+
+  if (isLoading || isLoadingShipping) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -113,7 +137,6 @@ export default function Checkout() {
       <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Checkout Form */}
         <div className="lg:col-span-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -175,6 +198,79 @@ export default function Checkout() {
                 </CardContent>
               </Card>
 
+              {shippingOptions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Truck className="h-5 w-5" />
+                      Opção de Envio
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <RadioGroup
+                      value={selectedShippingId}
+                      onValueChange={setSelectedShippingId}
+                      className="space-y-3"
+                      data-testid="shipping-options-group"
+                    >
+                      {shippingOptions.map((option) => (
+                        <div
+                          key={option.id}
+                          className={`flex items-start gap-3 p-4 rounded-md border cursor-pointer transition-colors ${
+                            selectedShippingId === option.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/50"
+                          }`}
+                          onClick={() => setSelectedShippingId(option.id)}
+                        >
+                          <RadioGroupItem
+                            value={option.id}
+                            id={`shipping-${option.id}`}
+                            className="mt-0.5"
+                            data-testid={`radio-shipping-${option.id}`}
+                          />
+                          <div className="flex-1">
+                            <Label
+                              htmlFor={`shipping-${option.id}`}
+                              className="font-medium cursor-pointer"
+                            >
+                              {option.name}
+                            </Label>
+                            {option.description && (
+                              <p className="text-sm text-muted-foreground mt-0.5">
+                                {option.description}
+                              </p>
+                            )}
+                            {option.estimatedDays && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Entrega estimada: {option.estimatedDays} dias úteis
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="font-semibold">
+                              {Number(option.price) === 0 ? (
+                                <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
+                              ) : (
+                                Number(option.price).toLocaleString("pt-PT", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                })
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    {!selectedShippingId && (
+                      <p className="text-sm text-destructive mt-3">
+                        Por favor selecione uma opção de envio
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle>Produtos ({cartItems.length})</CardTitle>
@@ -215,7 +311,7 @@ export default function Checkout() {
                   type="submit"
                   size="lg"
                   className="w-full"
-                  disabled={createOrderMutation.isPending}
+                  disabled={createOrderMutation.isPending || !isFormValid}
                   data-testid="button-submit-order-mobile"
                 >
                   {createOrderMutation.isPending ? (
@@ -245,7 +341,8 @@ export default function Checkout() {
                     }))}
                     shippingAddress={form.watch("shippingAddress")}
                     notes={form.watch("notes") || ""}
-                    disabled={!form.watch("shippingAddress") || form.watch("shippingAddress").length < 10}
+                    shippingOptionId={selectedShippingId || undefined}
+                    disabled={!isFormValid}
                     onSuccess={(details) => {
                       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
                       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -269,7 +366,6 @@ export default function Checkout() {
           </Form>
         </div>
 
-        {/* Summary */}
         <div>
           <Card className="sticky top-24">
             <CardHeader>
@@ -287,21 +383,31 @@ export default function Checkout() {
               </div>
               <div className="flex justify-between text-sm">
                 <span>Envio</span>
-                <span>
-                  {shipping === 0 ? (
+                <span data-testid="text-shipping-cost">
+                  {shippingOptions.length === 0 ? (
+                    <span className="text-muted-foreground">-</span>
+                  ) : !selectedShippingId ? (
+                    <span className="text-muted-foreground">Selecione opção</span>
+                  ) : shippingCost === 0 ? (
                     <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
                   ) : (
-                    shipping.toLocaleString("pt-PT", {
+                    shippingCost.toLocaleString("pt-PT", {
                       style: "currency",
                       currency: "EUR",
                     })
                   )}
                 </span>
               </div>
+              {selectedShipping && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedShipping.name}
+                  {selectedShipping.estimatedDays && ` - ${selectedShipping.estimatedDays} dias úteis`}
+                </p>
+              )}
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span>
+                <span data-testid="text-order-total">
                   {total.toLocaleString("pt-PT", {
                     style: "currency",
                     currency: "EUR",
@@ -314,7 +420,7 @@ export default function Checkout() {
                 className="w-full"
                 size="lg"
                 onClick={form.handleSubmit(onSubmit)}
-                disabled={createOrderMutation.isPending}
+                disabled={createOrderMutation.isPending || !isFormValid}
                 data-testid="button-submit-order"
               >
                 {createOrderMutation.isPending ? (
@@ -344,7 +450,8 @@ export default function Checkout() {
                   }))}
                   shippingAddress={form.watch("shippingAddress")}
                   notes={form.watch("notes") || ""}
-                  disabled={!form.watch("shippingAddress") || form.watch("shippingAddress").length < 10}
+                  shippingOptionId={selectedShippingId || undefined}
+                  disabled={!isFormValid}
                   onSuccess={(details) => {
                     queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
                     queryClient.invalidateQueries({ queryKey: ["/api/orders"] });

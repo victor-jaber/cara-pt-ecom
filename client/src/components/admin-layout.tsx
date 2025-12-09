@@ -22,7 +22,8 @@ import {
   ShoppingCart, 
   Users,
   ArrowLeft,
-  CreditCard
+  CreditCard,
+  Truck
 } from "lucide-react";
 
 const adminNavItems = [
@@ -55,6 +56,11 @@ const adminNavItems = [
     title: "PayPal",
     href: "/admin/paypal",
     icon: CreditCard,
+  },
+  {
+    title: "Frete",
+    href: "/admin/frete",
+    icon: Truck,
   },
 ];
 

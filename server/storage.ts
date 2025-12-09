@@ -6,6 +6,7 @@ import {
   orderItems,
   cartItems,
   paypalSettings,
+  shippingOptions,
   type User,
   type UpsertUser,
   type Product,
@@ -20,6 +21,8 @@ import {
   type CartItemWithProduct,
   type PaypalSettings,
   type InsertPaypalSettings,
+  type ShippingOption,
+  type InsertShippingOption,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -61,6 +64,14 @@ export interface IStorage {
   // PayPal settings operations
   getPaypalSettings(): Promise<PaypalSettings | undefined>;
   updatePaypalSettings(data: InsertPaypalSettings, updatedBy?: string): Promise<PaypalSettings>;
+
+  // Shipping options operations
+  getAllShippingOptions(): Promise<ShippingOption[]>;
+  getActiveShippingOptions(): Promise<ShippingOption[]>;
+  getShippingOptionById(id: string): Promise<ShippingOption | undefined>;
+  createShippingOption(option: InsertShippingOption): Promise<ShippingOption>;
+  updateShippingOption(id: string, option: Partial<InsertShippingOption>): Promise<ShippingOption | undefined>;
+  deleteShippingOption(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -345,6 +356,43 @@ export class DatabaseStorage implements IStorage {
       .values({ ...data, id: "default", updatedBy })
       .returning();
     return created;
+  }
+
+  // Shipping options operations
+  async getAllShippingOptions(): Promise<ShippingOption[]> {
+    return await db.select().from(shippingOptions).orderBy(shippingOptions.sortOrder);
+  }
+
+  async getActiveShippingOptions(): Promise<ShippingOption[]> {
+    return await db
+      .select()
+      .from(shippingOptions)
+      .where(eq(shippingOptions.isActive, true))
+      .orderBy(shippingOptions.sortOrder);
+  }
+
+  async getShippingOptionById(id: string): Promise<ShippingOption | undefined> {
+    const [option] = await db.select().from(shippingOptions).where(eq(shippingOptions.id, id));
+    return option;
+  }
+
+  async createShippingOption(option: InsertShippingOption): Promise<ShippingOption> {
+    const [newOption] = await db.insert(shippingOptions).values(option).returning();
+    return newOption;
+  }
+
+  async updateShippingOption(id: string, option: Partial<InsertShippingOption>): Promise<ShippingOption | undefined> {
+    const [updated] = await db
+      .update(shippingOptions)
+      .set({ ...option, updatedAt: new Date() })
+      .where(eq(shippingOptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteShippingOption(id: string): Promise<boolean> {
+    await db.delete(shippingOptions).where(eq(shippingOptions.id, id));
+    return true;
   }
 }
 

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hashPassword, verifyPassword } from "./auth";
-import { insertProductSchema, registerSchema, loginSchema, insertPaypalSettingsSchema } from "@shared/schema";
+import { insertProductSchema, registerSchema, loginSchema, insertPaypalSettingsSchema, insertShippingOptionSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, clearPayPalClientCache } from "./paypal";
 
@@ -281,12 +281,18 @@ export async function registerRoutes(
   app.post("/api/orders", isAuthenticated, isApproved, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { shippingAddress, notes } = req.body;
+      const { shippingAddress, notes, shippingOptionId } = req.body;
 
       // Get cart items with product data from database (prices are authoritative from DB)
       const cartItems = await storage.getCartItems(userId);
       if (cartItems.length === 0) {
         return res.status(400).json({ message: "Cart is empty" });
+      }
+
+      // Check if shipping options exist and require selection
+      const activeShippingOptions = await storage.getActiveShippingOptions();
+      if (activeShippingOptions.length > 0 && !shippingOptionId) {
+        return res.status(400).json({ message: "Shipping option is required" });
       }
 
       // Verify all products exist and are in stock
@@ -319,14 +325,31 @@ export async function registerRoutes(
         });
       }
 
-      // Create order with server-calculated total
+      // Handle shipping option - validate that the provided option is valid and active
+      let shippingCost = 0;
+      let shippingOptionName = null;
+      let validShippingOptionId = null;
+      if (shippingOptionId) {
+        const shippingOption = await storage.getShippingOptionById(shippingOptionId);
+        if (!shippingOption || !shippingOption.isActive) {
+          return res.status(400).json({ message: "Invalid or inactive shipping option" });
+        }
+        shippingCost = parseFloat(shippingOption.price);
+        shippingOptionName = shippingOption.name;
+        validShippingOptionId = shippingOptionId;
+      }
+
+      // Create order with server-calculated total including shipping
       const order = await storage.createOrder(
         {
           userId,
-          total: calculatedTotal.toFixed(2),
+          total: (calculatedTotal + shippingCost).toFixed(2),
           shippingAddress,
           notes,
           status: "pending",
+          shippingOptionId: validShippingOptionId,
+          shippingCost: shippingCost.toFixed(2),
+          shippingOptionName,
         },
         orderItems
       );
@@ -556,6 +579,65 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating PayPal settings:", error);
       res.status(500).json({ message: "Failed to update PayPal settings" });
+    }
+  });
+
+  // Shipping options routes (public - for checkout)
+  app.get("/api/shipping-options", isAuthenticated, isApproved, async (req, res) => {
+    try {
+      const options = await storage.getActiveShippingOptions();
+      res.json(options);
+    } catch (error) {
+      console.error("Error fetching shipping options:", error);
+      res.status(500).json({ message: "Failed to fetch shipping options" });
+    }
+  });
+
+  // Admin shipping options routes
+  app.get("/api/admin/shipping-options", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const options = await storage.getAllShippingOptions();
+      res.json(options);
+    } catch (error) {
+      console.error("Error fetching shipping options:", error);
+      res.status(500).json({ message: "Failed to fetch shipping options" });
+    }
+  });
+
+  app.post("/api/admin/shipping-options", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validated = insertShippingOptionSchema.parse(req.body);
+      const option = await storage.createShippingOption(validated);
+      res.json(option);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid shipping option data", errors: error.errors });
+      }
+      console.error("Error creating shipping option:", error);
+      res.status(500).json({ message: "Failed to create shipping option" });
+    }
+  });
+
+  app.patch("/api/admin/shipping-options/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const option = await storage.updateShippingOption(req.params.id, req.body);
+      if (!option) {
+        return res.status(404).json({ message: "Shipping option not found" });
+      }
+      res.json(option);
+    } catch (error) {
+      console.error("Error updating shipping option:", error);
+      res.status(500).json({ message: "Failed to update shipping option" });
+    }
+  });
+
+  app.delete("/api/admin/shipping-options/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteShippingOption(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting shipping option:", error);
+      res.status(500).json({ message: "Failed to delete shipping option" });
     }
   });
 

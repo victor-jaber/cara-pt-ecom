@@ -21,6 +21,9 @@ interface PendingPayPalOrder {
   }>;
   total: string;
   createdAt: number;
+  shippingOptionId?: string;
+  shippingCost?: string;
+  shippingOptionName?: string;
 }
 
 const pendingPayPalOrders = new Map<string, PendingPayPalOrder>();
@@ -101,13 +104,21 @@ export async function createPaypalOrder(req: Request, res: Response) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
+    const { shippingOptionId } = req.body || {};
+
     const cartItems = await storage.getCartItems(user.id);
     if (cartItems.length === 0) {
       return res.status(400).json({ error: "Cart is empty" });
     }
 
+    // Require shipping option when active options exist
+    const activeShippingOptions = await storage.getActiveShippingOptions();
+    if (activeShippingOptions.length > 0 && !shippingOptionId) {
+      return res.status(400).json({ error: "Shipping option is required" });
+    }
+
     const cartSnapshot: PendingPayPalOrder["cartSnapshot"] = [];
-    let total = 0;
+    let subtotal = 0;
 
     for (const item of cartItems) {
       const product = await storage.getProductById(item.productId);
@@ -119,7 +130,7 @@ export async function createPaypalOrder(req: Request, res: Response) {
       }
 
       const itemPrice = parseFloat(product.price);
-      total += itemPrice * item.quantity;
+      subtotal += itemPrice * item.quantity;
 
       cartSnapshot.push({
         productId: product.id,
@@ -128,6 +139,18 @@ export async function createPaypalOrder(req: Request, res: Response) {
         name: product.name,
       });
     }
+
+    let shippingCost = 0;
+    let shippingOptionName: string | undefined;
+    if (shippingOptionId) {
+      const shippingOption = await storage.getShippingOptionById(shippingOptionId);
+      if (shippingOption && shippingOption.isActive) {
+        shippingCost = parseFloat(shippingOption.price);
+        shippingOptionName = shippingOption.name;
+      }
+    }
+
+    const total = subtotal + shippingCost;
 
     const ordersController = new OrdersController(client);
 
@@ -153,6 +176,9 @@ export async function createPaypalOrder(req: Request, res: Response) {
       cartSnapshot,
       total: total.toFixed(2),
       createdAt: Date.now(),
+      shippingOptionId,
+      shippingCost: shippingCost.toFixed(2),
+      shippingOptionName,
     });
 
     return res.json(response.result);
@@ -232,6 +258,9 @@ export async function capturePaypalOrder(req: Request, res: Response) {
         paymentMethod: "paypal",
         paypalOrderId: orderID,
         paypalCaptureId: captureId,
+        shippingOptionId: pendingOrder.shippingOptionId || null,
+        shippingCost: pendingOrder.shippingCost || "0.00",
+        shippingOptionName: pendingOrder.shippingOptionName || null,
       },
       orderItems
     );
