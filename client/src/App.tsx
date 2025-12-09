@@ -27,6 +27,7 @@ import AdminApprovals from "@/pages/admin/approvals";
 import AdminOrders from "@/pages/admin/orders";
 import AdminProducts from "@/pages/admin/products";
 import AdminCustomers from "@/pages/admin/customers";
+import AuthPage from "@/pages/auth-page";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -52,7 +53,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
     return null;
   }
 
@@ -79,7 +80,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
     return null;
   }
 
@@ -123,6 +124,9 @@ function Router() {
     <Switch>
       <Route path="/" component={() => (
         <PublicLayout><Landing /></PublicLayout>
+      )} />
+      <Route path="/login" component={() => (
+        <PublicLayout><AuthPage /></PublicLayout>
       )} />
       <Route path="/inicio" component={() => (
         <ProtectedRoute><Home /></ProtectedRoute>
