@@ -50,7 +50,7 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
           <Link href="/" data-testid="link-home">
-            <span className="text-2xl font-bold tracking-tight text-primary">CARA</span>
+            <img src="/logo.webp" alt="CARA" className="h-10" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">

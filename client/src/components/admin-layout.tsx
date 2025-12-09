@@ -151,9 +151,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <Sidebar>
           <SidebarHeader className="border-b p-4">
             <Link href="/" data-testid="link-admin-home">
-              <span className="text-xl font-bold tracking-tight text-primary">CARA</span>
+              <img src="/logo.webp" alt="CARA" className="h-8" />
             </Link>
-            <span className="text-xs text-muted-foreground">Painel Admin</span>
+            <span className="text-xs text-muted-foreground mt-1">Painel Admin</span>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>

@@ -20,7 +20,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <span className="text-2xl font-bold tracking-tight text-primary">CARA</span>
+            <img src="/logo.webp" alt="CARA" className="h-10" />
             <p className="text-sm text-muted-foreground">
               Ácido Hialurónico Premium para Profissionais Médicos. Desenvolvido pelo laboratório GENOSS, líder em inovação médica.
             </p>
