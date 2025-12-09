@@ -47,6 +47,7 @@ export interface IStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
   restoreProduct(id: string): Promise<Product | undefined>;
+  permanentDeleteProduct(id: string): Promise<boolean>;
 
   // Cart operations
   getCartItems(userId: string): Promise<CartItemWithProduct[]>;
@@ -186,6 +187,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id))
       .returning();
     return updated;
+  }
+
+  async permanentDeleteProduct(id: string): Promise<boolean> {
+    const [deleted] = await db
+      .delete(products)
+      .where(eq(products.id, id))
+      .returning();
+    return !!deleted;
   }
 
   // Cart operations

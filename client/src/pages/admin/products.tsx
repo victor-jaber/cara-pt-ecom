@@ -17,6 +17,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormField,
@@ -57,6 +67,7 @@ export default function AdminProducts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [promotionRules, setPromotionRules] = useState<PromotionRule[]>([]);
+  const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -160,6 +171,21 @@ export default function AdminProducts() {
     },
     onError: () => {
       toast({ title: "Erro", description: "Não foi possível restaurar o produto.", variant: "destructive" });
+    },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/admin/products/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({ title: "Produto Eliminado", description: "O produto foi eliminado permanentemente." });
+      setDeleteConfirmProduct(null);
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível eliminar o produto.", variant: "destructive" });
     },
   });
 
@@ -329,15 +355,26 @@ export default function AdminProducts() {
                         <Archive className="h-4 w-4" />
                       </Button>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => restoreMutation.mutate(product.id)}
-                        disabled={restoreMutation.isPending}
-                        data-testid={`button-restore-${product.id}`}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => restoreMutation.mutate(product.id)}
+                          disabled={restoreMutation.isPending}
+                          data-testid={`button-restore-${product.id}`}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteConfirmProduct(product)}
+                          className="text-destructive"
+                          data-testid={`button-delete-${product.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -616,6 +653,28 @@ export default function AdminProducts() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteConfirmProduct} onOpenChange={(open) => !open && setDeleteConfirmProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar Produto Permanentemente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem a certeza que deseja eliminar permanentemente "{deleteConfirmProduct?.name}"? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirmProduct && permanentDeleteMutation.mutate(deleteConfirmProduct.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

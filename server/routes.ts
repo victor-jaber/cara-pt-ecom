@@ -508,6 +508,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/products/:id/permanent", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const deleted = await storage.permanentDeleteProduct(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json({ success: true, message: "Produto eliminado permanentemente" });
+    } catch (error) {
+      console.error("Error permanently deleting product:", error);
+      res.status(500).json({ message: "Failed to permanently delete product" });
+    }
+  });
+
   // Admin endpoint to get all products (including inactive)
   app.get("/api/admin/products", isAuthenticated, isAdmin, async (req, res) => {
     try {
