@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,7 +26,7 @@ declare global {
 }
 
 interface PayPalSetup {
-  clientId: string;
+  clientId: string | null;
   enabled: boolean;
   mode: "sandbox" | "live";
 }
@@ -63,6 +63,17 @@ export function PayPalButton({
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [buttonsRendered, setButtonsRendered] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
+  
+  const cartRef = useRef(cart);
+  const shippingAddressRef = useRef(shippingAddress);
+  const notesRef = useRef(notes);
+  
+  useEffect(() => {
+    cartRef.current = cart;
+    shippingAddressRef.current = shippingAddress;
+    notesRef.current = notes;
+  }, [cart, shippingAddress, notes]);
 
   const { data: setup, isLoading: setupLoading } = useQuery<PayPalSetup>({
     queryKey: ["/api/paypal/setup"],
@@ -73,7 +84,11 @@ export function PayPalButton({
 
     const existingScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
     if (existingScript) {
-      setScriptLoaded(true);
+      if (window.paypal) {
+        setScriptLoaded(true);
+      } else {
+        existingScript.addEventListener('load', () => setScriptLoaded(true));
+      }
       return;
     }
 
@@ -87,95 +102,108 @@ export function PayPalButton({
       setScriptError("Não foi possível carregar o PayPal. Tente novamente mais tarde.");
     };
     document.body.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
   }, [setup, scriptLoaded]);
 
-  useEffect(() => {
-    if (!scriptLoaded || !paypalRef.current || !window.paypal || buttonsRendered || disabled) return;
+  const handleCreateOrder = useCallback(async () => {
+    const response = await fetch("/api/paypal/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ 
+        cart: cartRef.current.map(item => ({
+          price: item.price,
+          quantity: item.quantity,
+          name: item.name || "Produto CARA"
+        })),
+        shippingAddress: shippingAddressRef.current,
+        notes: notesRef.current,
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || "Erro ao criar pedido PayPal");
+    }
+    
+    const order = await response.json();
+    return order.id;
+  }, []);
 
+  const handleApprove = useCallback(async (data: { orderID: string }) => {
+    const response = await fetch(`/api/paypal/order/${data.orderID}/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ 
+        shippingAddress: shippingAddressRef.current, 
+        notes: notesRef.current 
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || "Erro ao processar pagamento");
+    }
+    
+    const details = await response.json();
+    onSuccess({
+      paypalOrderId: details.paypalOrderId,
+      paypalCaptureId: details.paypalCaptureId,
+      payerEmail: details.payerEmail,
+      orderId: details.orderId,
+    });
+  }, [onSuccess]);
+
+  useEffect(() => {
+    if (!scriptLoaded || !paypalRef.current || !window.paypal || buttonsRendered || isRendering || disabled) {
+      return;
+    }
+
+    setIsRendering(true);
     paypalRef.current.innerHTML = "";
 
-    window.paypal.Buttons({
-      style: {
-        layout: "vertical",
-        color: "gold",
-        shape: "rect",
-        label: "paypal",
-        height: 45,
-      },
-      createOrder: async () => {
-        try {
-          const response = await fetch("/api/paypal/order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ 
-              cart: cart.map(item => ({
-                price: item.price,
-                quantity: item.quantity,
-                name: item.name || "Produto CARA"
-              })),
-              shippingAddress,
-              notes,
-            }),
-          });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || "Erro ao criar pedido PayPal");
+    try {
+      window.paypal.Buttons({
+        style: {
+          layout: "vertical",
+          color: "gold",
+          shape: "rect",
+          label: "paypal",
+          height: 45,
+        },
+        createOrder: async () => {
+          try {
+            return await handleCreateOrder();
+          } catch (err) {
+            onError(err instanceof Error ? err : new Error("Erro ao criar pedido"));
+            throw err;
           }
-          
-          const order = await response.json();
-          return order.id;
-        } catch (err) {
-          onError(err instanceof Error ? err : new Error("Erro ao criar pedido"));
-          throw err;
-        }
-      },
-      onApprove: async (data) => {
-        try {
-          const response = await fetch(`/api/paypal/order/${data.orderID}/capture`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ shippingAddress, notes }),
-          });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || "Erro ao processar pagamento");
+        },
+        onApprove: async (data) => {
+          try {
+            await handleApprove(data);
+          } catch (err) {
+            onError(err instanceof Error ? err : new Error("Erro ao capturar pagamento"));
           }
-          
-          const details = await response.json();
-          onSuccess({
-            paypalOrderId: details.paypalOrderId,
-            paypalCaptureId: details.paypalCaptureId,
-            payerEmail: details.payerEmail,
-            orderId: details.orderId,
-          });
-        } catch (err) {
-          onError(err instanceof Error ? err : new Error("Erro ao capturar pagamento"));
-        }
-      },
-      onError: (err) => {
-        onError(err);
-      },
-      onCancel: () => {
-        console.log("PayPal checkout cancelled");
-      },
-    }).render(paypalRef.current!).then(() => {
-      setButtonsRendered(true);
-    });
-  }, [scriptLoaded, cart, shippingAddress, notes, onSuccess, onError, buttonsRendered, disabled]);
-
-  useEffect(() => {
-    setButtonsRendered(false);
-  }, [cart, shippingAddress, notes]);
+        },
+        onError: (err) => {
+          onError(err);
+        },
+        onCancel: () => {
+          console.log("PayPal checkout cancelled");
+        },
+      }).render(paypalRef.current!).then(() => {
+        setButtonsRendered(true);
+        setIsRendering(false);
+      }).catch((err: Error) => {
+        console.error("PayPal render error:", err);
+        setIsRendering(false);
+      });
+    } catch (err) {
+      console.error("PayPal Buttons error:", err);
+      setIsRendering(false);
+    }
+  }, [scriptLoaded, buttonsRendered, isRendering, disabled, handleCreateOrder, handleApprove, onError]);
 
   if (setupLoading) {
     return (
@@ -209,7 +237,7 @@ export function PayPalButton({
         data-testid="paypal-button-container"
         className={disabled ? "opacity-50 pointer-events-none" : ""}
       />
-      {!scriptLoaded && (
+      {(!scriptLoaded || isRendering) && !buttonsRendered && (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
