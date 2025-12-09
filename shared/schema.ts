@@ -33,11 +33,14 @@ export const sessions = pgTable(
 // Users table with approval system
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
-  phone: varchar("phone"),
+  phone: varchar("phone").notNull(),
+  profession: varchar("profession").notNull(),
+  additionalInfo: text("additional_info"),
   nif: varchar("nif"),
   professionalLicense: varchar("professional_license"),
   specialty: varchar("specialty"),
@@ -141,6 +144,31 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
+// Registration schema for form validation (without passwordHash)
+export const registerSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+  confirmPassword: z.string(),
+  firstName: z.string().min(1, "Nome é obrigatório"),
+  lastName: z.string().min(1, "Sobrenome é obrigatório"),
+  phone: z.string().min(9, "Número de telemóvel inválido"),
+  profession: z.string().min(1, "Selecione a sua profissão"),
+  additionalInfo: z.string().optional(),
+  acceptTerms: z.boolean(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "As palavras-passe não coincidem",
+  path: ["confirmPassword"],
+}).refine((data) => data.acceptTerms === true, {
+  message: "Deve aceitar as políticas de privacidade",
+  path: ["acceptTerms"],
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "Palavra-passe é obrigatória"),
+  rememberMe: z.boolean().optional(),
+});
+
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
   createdAt: true,
@@ -166,6 +194,8 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
 
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;

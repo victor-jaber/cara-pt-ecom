@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertProductSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated, hashPassword, verifyPassword } from "./auth";
+import { insertProductSchema, registerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -10,14 +10,97 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   // Auth middleware setup
-  await setupAuth(app);
+  setupAuth(app);
 
-  // Auth routes
+  // Register endpoint
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validated = registerSchema.parse(req.body);
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(validated.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Este email já está registado" });
+      }
+
+      // Hash password
+      const passwordHash = await hashPassword(validated.password);
+
+      // Create user
+      const user = await storage.createUser({
+        email: validated.email,
+        passwordHash,
+        firstName: validated.firstName,
+        lastName: validated.lastName,
+        phone: validated.phone,
+        profession: validated.profession,
+        additionalInfo: validated.additionalInfo || null,
+        status: "pending",
+        role: "customer",
+      });
+
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({ 
+        success: true, 
+        user: { ...user, passwordHash: undefined } 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      console.error("Error registering user:", error);
+      res.status(500).json({ message: "Falha ao registar utilizador" });
+    }
+  });
+
+  // Login endpoint
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const validated = loginSchema.parse(req.body);
+
+      const user = await storage.getUserByEmail(validated.email);
+      if (!user) {
+        return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
+      }
+
+      const isValid = await verifyPassword(validated.password, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({ 
+        success: true, 
+        user: { ...user, passwordHash: undefined } 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      console.error("Error logging in:", error);
+      res.status(500).json({ message: "Falha ao iniciar sessão" });
+    }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Falha ao terminar sessão" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Get current user
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const user = req.user;
+      res.json({ ...user, passwordHash: undefined });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -27,8 +110,7 @@ export async function registerRoutes(
   // Middleware to check if user is approved
   const isApproved = async (req: any, res: any, next: any) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       if (!user || user.status !== "approved") {
         return res.status(403).json({ message: "Account not approved" });
       }
@@ -42,8 +124,7 @@ export async function registerRoutes(
   // Middleware to check if user is admin
   const isAdmin = async (req: any, res: any, next: any) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       if (!user || user.role !== "admin") {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -92,7 +173,7 @@ export async function registerRoutes(
   // Cart routes (protected - requires approval)
   app.get("/api/cart", isAuthenticated, isApproved, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const items = await storage.getCartItems(userId);
       res.json(items);
     } catch (error) {
@@ -103,7 +184,7 @@ export async function registerRoutes(
 
   app.post("/api/cart", isAuthenticated, isApproved, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { productId, quantity } = req.body;
       
       if (!productId) {
@@ -152,7 +233,7 @@ export async function registerRoutes(
 
   app.delete("/api/cart", isAuthenticated, isApproved, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.clearCart(userId);
       res.json({ success: true });
     } catch (error) {
@@ -164,7 +245,7 @@ export async function registerRoutes(
   // Orders routes (protected - requires approval)
   app.get("/api/orders", isAuthenticated, isApproved, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const orders = await storage.getOrdersByUser(userId);
       res.json(orders);
     } catch (error) {
@@ -180,7 +261,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Order not found" });
       }
       // Check if user owns this order
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       if (order.userId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -193,7 +274,7 @@ export async function registerRoutes(
 
   app.post("/api/orders", isAuthenticated, isApproved, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { shippingAddress, notes } = req.body;
 
       // Get cart items with product data from database (prices are authoritative from DB)
@@ -257,7 +338,7 @@ export async function registerRoutes(
   // User profile update
   app.patch("/api/user/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { phone, nif, professionalLicense, specialty, clinicName, clinicAddress } = req.body;
 
       const user = await storage.updateUserProfile(userId, {
