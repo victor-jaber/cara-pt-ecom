@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, User, LogOut, Settings, Package, Menu, Globe, MapPin } from "lucide-react";
+import { ShoppingCart, User, LogOut, Settings, Package, Menu } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { CartItemWithProduct } from "@shared/schema";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -20,7 +20,7 @@ import { useState } from "react";
 
 export function Header() {
   const { user, isAuthenticated, isApproved, isAdmin } = useAuth();
-  const { isPortugal, isInternational, canAccessPricesAsInternational, resetLocation } = useLocationContext();
+  const { isPortugal, isInternational, canAccessPricesAsInternational } = useLocationContext();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -78,31 +78,22 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1" data-testid="button-location">
-                {isPortugal ? (
-                  <>
-                    <MapPin className="h-4 w-4" />
-                    <span className="hidden sm:inline">PT</span>
-                  </>
-                ) : isInternational ? (
-                  <>
-                    <Globe className="h-4 w-4" />
-                    <span className="hidden sm:inline">INT</span>
-                  </>
-                ) : (
-                  <Globe className="h-4 w-4" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={resetLocation} data-testid="menu-change-location">
-                <Globe className="mr-2 h-4 w-4" />
-                Change Location
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div 
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-sm"
+            data-testid="location-indicator"
+          >
+            {isPortugal ? (
+              <>
+                <span className="text-base leading-none">🇵🇹</span>
+                <span className="hidden sm:inline">Portugal</span>
+              </>
+            ) : (
+              <>
+                <span className="text-base leading-none">🌍</span>
+                <span className="hidden sm:inline">Internacional</span>
+              </>
+            )}
+          </div>
 
           <ThemeToggle />
 
