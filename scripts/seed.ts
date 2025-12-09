@@ -1,7 +1,17 @@
-import { db } from "../server/db";
-import { users, products, shippingOptions, paypalSettings } from "../shared/schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import * as schema from "../shared/schema";
+
+const { Pool } = pg;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set");
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema });
 
 async function seed() {
   console.log("Starting seed...");
@@ -18,7 +28,7 @@ async function seed() {
   });
 
   if (!existingAdmin) {
-    await db.insert(users).values({
+    await db.insert(schema.users).values({
       email: adminEmail,
       passwordHash,
       firstName: adminFirstName,
@@ -30,7 +40,7 @@ async function seed() {
     });
     console.log(`Admin user created: ${adminEmail}`);
   } else {
-    await db.update(users)
+    await db.update(schema.users)
       .set({
         passwordHash,
         firstName: adminFirstName,
@@ -38,13 +48,13 @@ async function seed() {
         status: "approved",
         role: "admin",
       })
-      .where(eq(users.email, adminEmail));
+      .where(eq(schema.users.email, adminEmail));
     console.log(`Admin user updated: ${adminEmail}`);
   }
 
   const existingProducts = await db.query.products.findFirst();
   if (!existingProducts) {
-    await db.insert(products).values([
+    await db.insert(schema.products).values([
       {
         name: "CARA Light",
         slug: "cara-light",
@@ -104,7 +114,7 @@ async function seed() {
 
   const existingShipping = await db.query.shippingOptions.findFirst();
   if (!existingShipping) {
-    await db.insert(shippingOptions).values([
+    await db.insert(schema.shippingOptions).values([
       {
         name: "Envio Standard",
         description: "Entrega em 3-5 dias úteis",
@@ -137,7 +147,7 @@ async function seed() {
 
   const existingPaypal = await db.query.paypalSettings.findFirst();
   if (!existingPaypal) {
-    await db.insert(paypalSettings).values({
+    await db.insert(schema.paypalSettings).values({
       id: "default",
       mode: "sandbox",
       isEnabled: false,
@@ -148,6 +158,7 @@ async function seed() {
   }
 
   console.log("Seed completed successfully!");
+  await pool.end();
   process.exit(0);
 }
 
