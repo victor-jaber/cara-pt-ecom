@@ -24,7 +24,7 @@ export function Header() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const canAccessProducts = canAccessPricesAsInternational || (isPortugal && isApproved);
+  const canAccessProducts = canAccessPricesAsInternational || isApproved;
 
   const { data: cartItems = [] } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
