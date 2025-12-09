@@ -47,7 +47,7 @@ export default function Account() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: AccountForm) => {
-      await apiRequest("PATCH", "/api/auth/user", data);
+      await apiRequest("PATCH", "/api/user/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

@@ -26,10 +26,7 @@ export default function AdminApprovals() {
 
   const approveMutation = useMutation({
     mutationFn: async ({ userId, status }: { userId: string; status: "approved" | "rejected" }) => {
-      return apiRequest(`/api/admin/users/${userId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      return apiRequest("PATCH", `/api/admin/users/${userId}/status`, { status });
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -76,7 +73,6 @@ export default function AdminApprovals() {
                 </h3>
                 <Badge 
                   variant={user.status === "pending" ? "secondary" : user.status === "approved" ? "default" : "destructive"}
-                  size="sm"
                 >
                   {user.status === "pending" && "Pendente"}
                   {user.status === "approved" && "Aprovado"}

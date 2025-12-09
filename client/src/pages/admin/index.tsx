@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                         {user.clinicName || user.email}
                       </p>
                     </div>
-                    <Badge variant="secondary" size="sm">
+                    <Badge variant="secondary">
                       Pendente
                     </Badge>
                   </div>
@@ -185,7 +185,6 @@ export default function AdminDashboard() {
                     </div>
                     <Badge
                       variant={order.status === "pending" ? "secondary" : "default"}
-                      size="sm"
                     >
                       {order.status === "pending" && "Pendente"}
                       {order.status === "confirmed" && "Confirmado"}

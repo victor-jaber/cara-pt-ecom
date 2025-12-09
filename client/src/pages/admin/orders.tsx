@@ -59,10 +59,7 @@ export default function AdminOrders() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
-      return apiRequest(`/api/admin/orders/${orderId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      return apiRequest("PATCH", `/api/admin/orders/${orderId}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
@@ -169,7 +166,7 @@ export default function AdminOrders() {
                       <span className="font-mono text-sm text-muted-foreground">
                         #{order.id.slice(0, 8)}
                       </span>
-                      <Badge variant={statusColors[order.status]} size="sm">
+                      <Badge variant={statusColors[order.status]}>
                         {statusLabels[order.status]}
                       </Badge>
                     </div>
