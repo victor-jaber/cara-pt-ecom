@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -6,15 +7,22 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Truck } from "lucide-react";
 import { Link } from "wouter";
-import type { CartItemWithProduct } from "@shared/schema";
+import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 
 export default function Cart() {
   const { toast } = useToast();
+  const [selectedShippingId, setSelectedShippingId] = useState<string>("");
 
   const { data: cartItems = [], isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
+  });
+
+  const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
+    queryKey: ["/api/shipping-options"],
   });
 
   const updateQuantityMutation = useMutation({
@@ -57,10 +65,12 @@ export default function Cart() {
     (acc, item) => acc + Number(item.product.price) * item.quantity,
     0
   );
-  const shipping = subtotal >= 300 ? 0 : 15;
-  const total = subtotal + shipping;
+  
+  const selectedShipping = shippingOptions.find(opt => opt.id === selectedShippingId);
+  const shippingCost = selectedShipping ? Number(selectedShipping.price) : 0;
+  const total = subtotal + shippingCost;
 
-  if (isLoading) {
+  if (isLoading || isLoadingShipping) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Carrinho</h1>
@@ -231,28 +241,93 @@ export default function Cart() {
                   })}
                 </span>
               </div>
+              
+              {shippingOptions.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Truck className="h-4 w-4" />
+                      <span>Opção de Envio</span>
+                    </div>
+                    <RadioGroup
+                      value={selectedShippingId}
+                      onValueChange={setSelectedShippingId}
+                      className="space-y-2"
+                      data-testid="cart-shipping-options"
+                    >
+                      {shippingOptions.map((option) => (
+                        <div
+                          key={option.id}
+                          className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
+                            selectedShippingId === option.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/50"
+                          }`}
+                          onClick={() => setSelectedShippingId(option.id)}
+                        >
+                          <RadioGroupItem
+                            value={option.id}
+                            id={`cart-shipping-${option.id}`}
+                            data-testid={`cart-radio-shipping-${option.id}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <Label
+                              htmlFor={`cart-shipping-${option.id}`}
+                              className="font-medium cursor-pointer text-sm"
+                            >
+                              {option.name}
+                            </Label>
+                            {option.estimatedDays && (
+                              <p className="text-xs text-muted-foreground">
+                                {option.estimatedDays}
+                              </p>
+                            )}
+                          </div>
+                          <span className="font-medium text-sm">
+                            {Number(option.price) === 0 ? (
+                              <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
+                            ) : (
+                              Number(option.price).toLocaleString("pt-PT", {
+                                style: "currency",
+                                currency: "EUR",
+                              })
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    {!selectedShippingId && (
+                      <p className="text-xs text-destructive">
+                        Selecione uma opção de envio
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              <Separator />
               <div className="flex justify-between text-sm">
                 <span>Envio</span>
-                <span>
-                  {shipping === 0 ? (
+                <span data-testid="cart-shipping-cost">
+                  {shippingOptions.length === 0 ? (
+                    <span className="text-muted-foreground">-</span>
+                  ) : !selectedShippingId ? (
+                    <span className="text-muted-foreground">Selecione opção</span>
+                  ) : shippingCost === 0 ? (
                     <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
                   ) : (
-                    shipping.toLocaleString("pt-PT", {
+                    shippingCost.toLocaleString("pt-PT", {
                       style: "currency",
                       currency: "EUR",
                     })
                   )}
                 </span>
               </div>
-              {shipping > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Envio grátis para compras acima de 300€
-                </p>
-              )}
               <Separator />
               <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span>
+                <span data-testid="cart-total">
                   {total.toLocaleString("pt-PT", {
                     style: "currency",
                     currency: "EUR",
@@ -261,8 +336,13 @@ export default function Cart() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="/checkout" className="w-full">
-                <Button className="w-full" size="lg" data-testid="button-checkout">
+              <Link href={selectedShippingId ? `/checkout?shipping=${selectedShippingId}` : "/checkout"} className="w-full">
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  disabled={shippingOptions.length > 0 && !selectedShippingId}
+                  data-testid="button-checkout"
+                >
                   Finalizar Compra
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

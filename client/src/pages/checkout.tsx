@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 import { PayPalButton } from "@/components/paypal-button";
 
@@ -30,7 +30,10 @@ export default function Checkout() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [selectedShippingId, setSelectedShippingId] = useState<string>("");
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const shippingFromUrl = urlParams.get("shipping") || "";
+  const [selectedShippingId, setSelectedShippingId] = useState<string>(shippingFromUrl);
 
   const { data: cartItems = [], isLoading } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
