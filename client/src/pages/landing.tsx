@@ -430,7 +430,7 @@ export default function Landing() {
           </div>
 
           <AnimatedSection className="text-center">
-            <Link href="/login">
+            <Link href="/produtos">
               <Button variant="outline" size="lg" className="gap-2" data-testid="button-view-catalog">
                 Ver Catálogo Completo
                 <ArrowRight className="w-4 h-4" />

@@ -515,8 +515,13 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Product not found" });
       }
       res.json({ success: true, message: "Produto eliminado permanentemente" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error permanently deleting product:", error);
+      if (error?.code === '23503') {
+        return res.status(400).json({ 
+          message: "Este produto não pode ser eliminado porque faz parte de encomendas existentes. Mantenha-o arquivado para preservar o histórico." 
+        });
+      }
       res.status(500).json({ message: "Failed to permanently delete product" });
     }
   });

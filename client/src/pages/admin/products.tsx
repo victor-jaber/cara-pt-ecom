@@ -176,7 +176,12 @@ export default function AdminProducts() {
 
   const permanentDeleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/admin/products/${id}/permanent`);
+      const res = await apiRequest("DELETE", `/api/admin/products/${id}/permanent`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Erro ao eliminar produto");
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
@@ -184,8 +189,9 @@ export default function AdminProducts() {
       toast({ title: "Produto Eliminado", description: "O produto foi eliminado permanentemente." });
       setDeleteConfirmProduct(null);
     },
-    onError: () => {
-      toast({ title: "Erro", description: "Não foi possível eliminar o produto.", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setDeleteConfirmProduct(null);
     },
   });
 
