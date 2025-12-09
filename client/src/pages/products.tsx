@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingBag, Search, Filter, X } from "lucide-react";
 import type { Product } from "@shared/schema";
 import { useState } from "react";
+import { useLocationContext } from "@/contexts/LocationContext";
+import { useGuestCart } from "@/contexts/GuestCartContext";
 import {
   Select,
   SelectContent,
@@ -22,6 +24,8 @@ export default function Products() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const { canAccessPricesAsInternational } = useLocationContext();
+  const guestCart = useGuestCart();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -46,6 +50,18 @@ export default function Products() {
       });
     },
   });
+
+  const handleAddToCart = (product: Product) => {
+    if (canAccessPricesAsInternational) {
+      guestCart.addItem(product);
+      toast({
+        title: "Produto adicionado",
+        description: "O produto foi adicionado ao carrinho.",
+      });
+    } else {
+      addToCartMutation.mutate(product.id);
+    }
+  };
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -166,7 +182,7 @@ export default function Products() {
               <ProductCard
                 key={product.id}
                 product={product}
-                onAddToCart={(p) => addToCartMutation.mutate(p.id)}
+                onAddToCart={handleAddToCart}
                 isLoading={addToCartMutation.isPending}
               />
             ))}

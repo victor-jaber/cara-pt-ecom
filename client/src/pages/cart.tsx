@@ -14,13 +14,18 @@ import { Label } from "@/components/ui/label";
 import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Truck, Tag } from "lucide-react";
 import { Link } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
+import { useLocationContext } from "@/contexts/LocationContext";
+import { useGuestCart, type GuestCartItem } from "@/contexts/GuestCartContext";
 
 export default function Cart() {
   const { toast } = useToast();
   const [selectedShippingId, setSelectedShippingId] = useState<string>("");
+  const { canAccessPricesAsInternational } = useLocationContext();
+  const guestCart = useGuestCart();
 
-  const { data: cartItems = [], isLoading } = useQuery<CartItemWithProduct[]>({
+  const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
+    enabled: !canAccessPricesAsInternational,
   });
 
   const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
@@ -62,6 +67,39 @@ export default function Cart() {
       });
     },
   });
+
+  const isUsingGuestCart = canAccessPricesAsInternational;
+  const isLoading = isUsingGuestCart ? false : isLoadingApiCart;
+  
+  const cartItems: CartItemWithProduct[] = isUsingGuestCart
+    ? guestCart.items.map((item: GuestCartItem) => ({
+        id: item.id,
+        userId: "guest",
+        productId: item.product.id,
+        quantity: item.quantity,
+        product: item.product,
+      }))
+    : apiCartItems;
+
+  const handleUpdateQuantity = (id: string, quantity: number) => {
+    if (isUsingGuestCart) {
+      guestCart.updateQuantity(id, quantity);
+    } else {
+      updateQuantityMutation.mutate({ id, quantity });
+    }
+  };
+
+  const handleRemoveItem = (id: string) => {
+    if (isUsingGuestCart) {
+      guestCart.removeItem(id);
+      toast({
+        title: "Produto removido",
+        description: "O produto foi removido do carrinho.",
+      });
+    } else {
+      removeItemMutation.mutate(id);
+    }
+  };
 
   const subtotal = cartItems.reduce(
     (acc, item) => acc + calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules),
@@ -162,8 +200,8 @@ export default function Cart() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeItemMutation.mutate(item.id)}
-                        disabled={removeItemMutation.isPending}
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={!isUsingGuestCart && removeItemMutation.isPending}
                         data-testid={`button-remove-${item.id}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -176,13 +214,8 @@ export default function Cart() {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() =>
-                            updateQuantityMutation.mutate({
-                              id: item.id,
-                              quantity: Math.max(1, item.quantity - 1),
-                            })
-                          }
-                          disabled={item.quantity <= 1 || updateQuantityMutation.isPending}
+                          onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          disabled={item.quantity <= 1 || (!isUsingGuestCart && updateQuantityMutation.isPending)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -190,25 +223,15 @@ export default function Cart() {
                           type="number"
                           min={1}
                           value={item.quantity}
-                          onChange={(e) =>
-                            updateQuantityMutation.mutate({
-                              id: item.id,
-                              quantity: Math.max(1, parseInt(e.target.value) || 1),
-                            })
-                          }
+                          onChange={(e) => handleUpdateQuantity(item.id, Math.max(1, parseInt(e.target.value) || 1))}
                           className="w-14 h-8 text-center text-sm"
                         />
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() =>
-                            updateQuantityMutation.mutate({
-                              id: item.id,
-                              quantity: item.quantity + 1,
-                            })
-                          }
-                          disabled={updateQuantityMutation.isPending}
+                          onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                          disabled={!isUsingGuestCart && updateQuantityMutation.isPending}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>

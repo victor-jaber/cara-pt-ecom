@@ -364,6 +364,111 @@ export async function registerRoutes(
     }
   });
 
+  // Guest orders route (for international users who confirmed they are medical professionals)
+  app.post("/api/guest-orders", async (req, res) => {
+    try {
+      const { guestName, guestEmail, guestPhone, shippingAddress, notes, shippingOptionId, items } = req.body;
+
+      // Validate required fields
+      if (!guestName || !guestEmail || !guestPhone || !shippingAddress) {
+        return res.status(400).json({ message: "Missing required guest information" });
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No items in order" });
+      }
+
+      // Get or create guest user
+      let guestUser = await storage.getUserByEmail("guest@cara-fillers.com");
+      if (!guestUser) {
+        guestUser = await storage.createUser({
+          email: "guest@cara-fillers.com",
+          passwordHash: "guest-no-login-disabled",
+          firstName: "Guest",
+          lastName: "User",
+          profession: "international",
+          phone: "",
+          role: "customer",
+          status: "approved",
+        });
+      }
+
+      // Check if shipping options exist and require selection
+      const activeShippingOptions = await storage.getActiveShippingOptions();
+      if (activeShippingOptions.length > 0 && !shippingOptionId) {
+        return res.status(400).json({ message: "Shipping option is required" });
+      }
+
+      // Verify all products and calculate total using authoritative prices
+      const orderItems = [];
+      let calculatedTotal = 0;
+
+      for (const item of items) {
+        const product = await storage.getProductById(item.productId);
+        if (!product) {
+          return res.status(400).json({ 
+            message: `Product not found` 
+          });
+        }
+        if (!product.inStock) {
+          return res.status(400).json({ 
+            message: `Product ${product.name} is out of stock` 
+          });
+        }
+
+        const itemPrice = parseFloat(product.price);
+        calculatedTotal += itemPrice * item.quantity;
+
+        orderItems.push({
+          productId: product.id,
+          quantity: item.quantity,
+          price: product.price,
+          orderId: "",
+        });
+      }
+
+      // Handle shipping option
+      let shippingCost = 0;
+      let shippingOptionName = null;
+      let validShippingOptionId = null;
+      if (shippingOptionId) {
+        const shippingOption = await storage.getShippingOptionById(shippingOptionId);
+        if (!shippingOption || !shippingOption.isActive) {
+          return res.status(400).json({ message: "Invalid or inactive shipping option" });
+        }
+        shippingCost = parseFloat(shippingOption.price);
+        shippingOptionName = shippingOption.name;
+        validShippingOptionId = shippingOptionId;
+      }
+
+      // Create order with guest info stored in paymentMetadata
+      const order = await storage.createOrder(
+        {
+          userId: guestUser.id,
+          total: (calculatedTotal + shippingCost).toFixed(2),
+          shippingAddress,
+          notes: notes || "",
+          status: "pending",
+          shippingOptionId: validShippingOptionId,
+          shippingCost: shippingCost.toFixed(2),
+          shippingOptionName,
+          paymentMetadata: {
+            isGuestOrder: true,
+            guestName,
+            guestEmail,
+            guestPhone,
+          },
+        },
+        orderItems
+      );
+
+      res.json(order);
+    } catch (error) {
+      console.error("Error creating guest order:", error);
+      res.status(500).json({ message: "Failed to create guest order" });
+    }
+  });
+
   // User profile update
   app.patch("/api/user/profile", isAuthenticated, async (req: any, res) => {
     try {
