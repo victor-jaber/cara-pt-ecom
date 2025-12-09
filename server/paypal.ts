@@ -28,11 +28,11 @@ const pendingPayPalOrders = new Map<string, PendingPayPalOrder>();
 setInterval(() => {
   const now = Date.now();
   const expireTime = 30 * 60 * 1000;
-  for (const [orderId, order] of pendingPayPalOrders.entries()) {
+  pendingPayPalOrders.forEach((order, orderId) => {
     if (now - order.createdAt > expireTime) {
       pendingPayPalOrders.delete(orderId);
     }
-  }
+  });
 }, 5 * 60 * 1000);
 
 async function getPayPalClient(): Promise<Client | null> {
@@ -74,10 +74,14 @@ export async function loadPaypalDefault(req: Request, res: Response) {
     const settings = await storage.getPaypalSettings();
     
     if (!settings || !settings.isEnabled || !settings.clientId) {
-      return res.status(400).json({ error: "PayPal is not configured or enabled" });
+      return res.json({ clientId: null, enabled: false, mode: "sandbox" });
     }
 
-    return res.json({ clientId: settings.clientId });
+    return res.json({ 
+      clientId: settings.clientId, 
+      enabled: true, 
+      mode: settings.mode || "sandbox" 
+    });
   } catch (error) {
     console.error("Error loading PayPal settings:", error);
     return res.status(500).json({ error: "Failed to load PayPal configuration" });
