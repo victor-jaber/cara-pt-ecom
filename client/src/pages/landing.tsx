@@ -185,52 +185,43 @@ const faqs = [
 ];
 
 const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
+  initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6 }
-};
-
-const staggerChildren = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
+  transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
 };
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
   
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
-      transition={{ duration: 0.7, ease: "easeOut" }}
-      className={className}
+      className={`transition-all duration-500 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}
+      style={{ willChange: 'opacity, transform' }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 function ProductCard({ product, index }: { product: typeof products[0]; index: number }) {
-  const [isHovered, setIsHovered] = useState(false);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-30px" });
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      viewport={{ once: true }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <div
+      ref={ref}
+      className={`transition-all duration-400 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+      style={{ 
+        transitionDelay: `${index * 50}ms`,
+        willChange: 'opacity, transform'
+      }}
     >
       <Card className="h-full overflow-visible group relative">
         <CardContent className="p-6 space-y-4">
           <div className="relative">
-            <div className="w-24 h-24 mx-auto rounded-full bg-primary/10 flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:bg-primary/20">
+            <div className="w-24 h-24 mx-auto rounded-full bg-primary/10 flex items-center justify-center transition-transform duration-300 ease-out group-hover:scale-105">
               <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">CARA</span>
               </div>
@@ -248,15 +239,7 @@ function ProductCard({ product, index }: { product: typeof products[0]; index: n
             <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
           </div>
           
-          <motion.div 
-            className="space-y-2 pt-2"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ 
-              height: isHovered ? "auto" : 0, 
-              opacity: isHovered ? 1 : 0 
-            }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="space-y-2 pt-2 overflow-hidden max-h-0 group-hover:max-h-40 transition-all duration-300 ease-out opacity-0 group-hover:opacity-100">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Profundidade:</span>
               <span className="font-medium">{product.depth}</span>
@@ -275,10 +258,10 @@ function ProductCard({ product, index }: { product: typeof products[0]; index: n
                 ))}
               </div>
             </div>
-          </motion.div>
+          </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
 
@@ -310,41 +293,35 @@ export default function Landing() {
         
         <div className="container mx-auto px-4 py-20 relative z-10">
           <div className="max-w-5xl mx-auto text-center space-y-8">
-            <motion.div {...fadeInUp}>
+            <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
               <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm">
                 <Sparkles className="w-4 h-4 mr-2 text-primary" />
                 Distribuidor Oficial em Portugal
               </Badge>
-            </motion.div>
+            </div>
             
-            <motion.h1 
-              className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-tight"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
+            <h1 
+              className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-tight animate-fade-in-up"
+              style={{ animationDelay: '100ms' }}
             >
               A <span className="text-primary">CARA</span> perfeita
               <br />
               <span className="text-4xl md:text-5xl lg:text-6xl font-medium text-muted-foreground">
                 para cada tratamento
               </span>
-            </motion.h1>
+            </h1>
             
-            <motion.p 
-              className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
+            <p 
+              className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in-up"
+              style={{ animationDelay: '200ms' }}
             >
               Ácido Hialurónico reticulado premium com <strong className="text-foreground">Lidocaína 3%</strong>, 
               desenvolvido para profissionais médicos que exigem excelência em cada procedimento.
-            </motion.p>
+            </p>
             
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
+            <div 
+              className="flex flex-col sm:flex-row gap-4 justify-center pt-4 animate-fade-in-up"
+              style={{ animationDelay: '300ms' }}
             >
               <a href="/api/login">
                 <Button size="lg" className="gap-2 text-lg px-8 py-6" data-testid="button-hero-register">
@@ -358,13 +335,11 @@ export default function Landing() {
                   Conhecer a CARA
                 </Button>
               </Link>
-            </motion.div>
+            </div>
 
-            <motion.div 
-              className="flex flex-wrap justify-center gap-8 pt-12 text-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.5 }}
+            <div 
+              className="flex flex-wrap justify-center gap-8 pt-12 text-sm animate-fade-in"
+              style={{ animationDelay: '400ms' }}
             >
               {[
                 { icon: CheckCircle2, text: "Registado no INFARMED" },
@@ -377,19 +352,15 @@ export default function Landing() {
                   {item.text}
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </div>
         
-        <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce-slow">
           <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center pt-2">
             <div className="w-1.5 h-3 bg-primary rounded-full" />
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Stats Section */}
@@ -397,22 +368,24 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                className="text-center"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <stat.icon className="w-8 h-8 mx-auto mb-3 opacity-80" />
-                <div className="text-4xl md:text-5xl font-bold mb-1">
-                  <CountUp value={stat.value} />
+            {stats.map((stat, index) => {
+              const ref = useRef(null);
+              const isInView = useInView(ref, { once: true, margin: "-30px" });
+              return (
+                <div
+                  key={stat.label}
+                  ref={ref}
+                  className={`text-center transition-all duration-400 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
+                  style={{ transitionDelay: `${index * 50}ms` }}
+                >
+                  <stat.icon className="w-8 h-8 mx-auto mb-3 opacity-80" />
+                  <div className="text-4xl md:text-5xl font-bold mb-1">
+                    <CountUp value={stat.value} />
+                  </div>
+                  <div className="text-sm opacity-80">{stat.label}</div>
                 </div>
-                <div className="text-sm opacity-80">{stat.label}</div>
-              </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
