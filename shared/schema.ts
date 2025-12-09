@@ -80,6 +80,9 @@ export const orders = pgTable("orders", {
   status: orderStatusEnum("status").default("pending").notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   shippingAddress: text("shipping_address"),
+  shippingOptionId: varchar("shipping_option_id"),
+  shippingCost: decimal("shipping_cost", { precision: 10, scale: 2 }),
+  shippingOptionName: varchar("shipping_option_name"),
   notes: text("notes"),
   paymentMethod: varchar("payment_method"),
   paymentStatus: paymentStatusEnum("payment_status").default("pending"),
@@ -117,6 +120,19 @@ export const cartItems = pgTable("cart_items", {
   productId: varchar("product_id").notNull().references(() => products.id),
   quantity: integer("quantity").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Shipping options table
+export const shippingOptions = pgTable("shipping_options", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  estimatedDays: varchar("estimated_days"),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Relations
@@ -213,6 +229,12 @@ export const insertPaypalSettingsSchema = createInsertSchema(paypalSettings).omi
   updatedAt: true,
 });
 
+export const insertShippingOptionSchema = createInsertSchema(shippingOptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -244,3 +266,6 @@ export type CartItemWithProduct = CartItem & {
 
 export type PaypalSettings = typeof paypalSettings.$inferSelect;
 export type InsertPaypalSettings = z.infer<typeof insertPaypalSettingsSchema>;
+
+export type ShippingOption = typeof shippingOptions.$inferSelect;
+export type InsertShippingOption = z.infer<typeof insertShippingOptionSchema>;
