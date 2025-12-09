@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { LocationModal, MedicalConfirmationModal } from "@/components/location-modal";
+import { MedicalConfirmationModal } from "@/components/location-modal";
 
 export type UserLocation = "portugal" | "international" | null;
 
@@ -27,31 +27,52 @@ interface LocationProviderProps {
   children: ReactNode;
 }
 
+async function detectCountryByIP(): Promise<"portugal" | "international"> {
+  try {
+    const response = await fetch("https://ip-api.com/json/?fields=countryCode");
+    const data = await response.json();
+    return data.countryCode === "PT" ? "portugal" : "international";
+  } catch (error) {
+    console.warn("Could not detect location by IP, defaulting to international:", error);
+    return "international";
+  }
+}
+
 export function LocationProvider({ children }: LocationProviderProps) {
   const [location, setLocationState] = useState<UserLocation>(null);
   const [isMedicalProfessionalConfirmed, setMedicalConfirmed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLocationModal, setShowLocationModal] = useState(false);
   const [showMedicalModal, setShowMedicalModal] = useState(false);
 
   useEffect(() => {
-    const savedLocation = localStorage.getItem(LOCATION_KEY) as UserLocation;
-    const savedMedicalConfirmed = localStorage.getItem(MEDICAL_CONFIRMED_KEY) === "true";
-    
-    setLocationState(savedLocation);
-    setMedicalConfirmed(savedMedicalConfirmed);
-    setIsLoading(false);
+    const initLocation = async () => {
+      const savedLocation = localStorage.getItem(LOCATION_KEY) as UserLocation;
+      const savedMedicalConfirmed = localStorage.getItem(MEDICAL_CONFIRMED_KEY) === "true";
+      
+      setMedicalConfirmed(savedMedicalConfirmed);
 
-    if (!savedLocation) {
-      setShowLocationModal(true);
-    }
+      if (savedLocation) {
+        setLocationState(savedLocation);
+        setIsLoading(false);
+      } else {
+        const detectedLocation = await detectCountryByIP();
+        localStorage.setItem(LOCATION_KEY, detectedLocation);
+        setLocationState(detectedLocation);
+        setIsLoading(false);
+        
+        if (detectedLocation === "international") {
+          setShowMedicalModal(true);
+        }
+      }
+    };
+
+    initLocation();
   }, []);
 
   const setLocation = useCallback((newLocation: UserLocation) => {
     if (newLocation) {
       localStorage.setItem(LOCATION_KEY, newLocation);
       setLocationState(newLocation);
-      setShowLocationModal(false);
 
       if (newLocation === "international") {
         setShowMedicalModal(true);
@@ -68,12 +89,19 @@ export function LocationProvider({ children }: LocationProviderProps) {
     setShowMedicalModal(false);
   }, []);
 
-  const resetLocation = useCallback(() => {
+  const resetLocation = useCallback(async () => {
     localStorage.removeItem(LOCATION_KEY);
     localStorage.removeItem(MEDICAL_CONFIRMED_KEY);
     setLocationState(null);
     setMedicalConfirmed(false);
-    setShowLocationModal(true);
+    
+    const detectedLocation = await detectCountryByIP();
+    localStorage.setItem(LOCATION_KEY, detectedLocation);
+    setLocationState(detectedLocation);
+    
+    if (detectedLocation === "international") {
+      setShowMedicalModal(true);
+    }
   }, []);
 
   const showMedicalConfirmation = useCallback(() => {
@@ -81,10 +109,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
   }, []);
 
   const handleMedicalCancel = useCallback(() => {
-    localStorage.removeItem(LOCATION_KEY);
-    setLocationState(null);
     setShowMedicalModal(false);
-    setShowLocationModal(true);
   }, []);
 
   const isPortugal = location === "portugal";
@@ -111,7 +136,6 @@ export function LocationProvider({ children }: LocationProviderProps) {
       }}
     >
       {children}
-      <LocationModal open={showLocationModal} onSelectLocation={setLocation} />
       <MedicalConfirmationModal
         open={showMedicalModal}
         onConfirm={confirmMedicalProfessional}
