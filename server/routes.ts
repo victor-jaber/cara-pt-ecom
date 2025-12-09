@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, hashPassword, verifyPassword } from "./auth";
-import { insertProductSchema, registerSchema, loginSchema } from "@shared/schema";
+import { insertProductSchema, registerSchema, loginSchema, insertPaypalSettingsSchema } from "@shared/schema";
 import { z } from "zod";
+import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, clearPayPalClientCache } from "./paypal";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -487,6 +488,74 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error processing contact form:", error);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // PayPal routes
+  app.get("/api/paypal/setup", async (req, res) => {
+    await loadPaypalDefault(req, res);
+  });
+
+  app.post("/api/paypal/order", isAuthenticated, isApproved, async (req, res) => {
+    await createPaypalOrder(req, res);
+  });
+
+  app.post("/api/paypal/order/:orderID/capture", isAuthenticated, isApproved, async (req, res) => {
+    await capturePaypalOrder(req, res);
+  });
+
+  // Admin PayPal settings routes
+  app.get("/api/admin/paypal-settings", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getPaypalSettings();
+      if (!settings) {
+        return res.json({ clientId: "", clientSecret: "", mode: "sandbox", isEnabled: false });
+      }
+      res.json({
+        clientId: settings.clientId || "",
+        clientSecret: settings.clientSecret ? "********" : "",
+        mode: settings.mode,
+        isEnabled: settings.isEnabled,
+        hasSecret: !!settings.clientSecret,
+      });
+    } catch (error) {
+      console.error("Error fetching PayPal settings:", error);
+      res.status(500).json({ message: "Failed to fetch PayPal settings" });
+    }
+  });
+
+  app.post("/api/admin/paypal-settings", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { clientId, clientSecret, mode, isEnabled } = req.body;
+      
+      const currentSettings = await storage.getPaypalSettings();
+      
+      const updateData: any = {
+        clientId,
+        mode,
+        isEnabled,
+      };
+      
+      if (clientSecret && clientSecret !== "********") {
+        updateData.clientSecret = clientSecret;
+      } else if (currentSettings?.clientSecret) {
+        updateData.clientSecret = currentSettings.clientSecret;
+      }
+
+      const settings = await storage.updatePaypalSettings(updateData, req.user.id);
+      
+      clearPayPalClientCache();
+      
+      res.json({
+        clientId: settings.clientId || "",
+        clientSecret: settings.clientSecret ? "********" : "",
+        mode: settings.mode,
+        isEnabled: settings.isEnabled,
+        hasSecret: !!settings.clientSecret,
+      });
+    } catch (error) {
+      console.error("Error updating PayPal settings:", error);
+      res.status(500).json({ message: "Failed to update PayPal settings" });
     }
   });
 

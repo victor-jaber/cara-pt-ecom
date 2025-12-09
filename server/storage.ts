@@ -5,6 +5,7 @@ import {
   orders,
   orderItems,
   cartItems,
+  paypalSettings,
   type User,
   type UpsertUser,
   type Product,
@@ -17,6 +18,8 @@ import {
   type InsertCartItem,
   type OrderWithItems,
   type CartItemWithProduct,
+  type PaypalSettings,
+  type InsertPaypalSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -53,6 +56,11 @@ export interface IStorage {
   getOrderById(id: string): Promise<OrderWithItems | undefined>;
   getAllOrders(): Promise<OrderWithItems[]>;
   updateOrderStatus(id: string, status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"): Promise<Order | undefined>;
+  updateOrderPayment(id: string, data: Partial<Order>): Promise<Order | undefined>;
+
+  // PayPal settings operations
+  getPaypalSettings(): Promise<PaypalSettings | undefined>;
+  updatePaypalSettings(data: InsertPaypalSettings, updatedBy?: string): Promise<PaypalSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -303,6 +311,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return updated;
+  }
+
+  async updateOrderPayment(id: string, data: Partial<Order>): Promise<Order | undefined> {
+    const [updated] = await db
+      .update(orders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+
+  // PayPal settings operations
+  async getPaypalSettings(): Promise<PaypalSettings | undefined> {
+    const [settings] = await db.select().from(paypalSettings).where(eq(paypalSettings.id, "default"));
+    return settings;
+  }
+
+  async updatePaypalSettings(data: InsertPaypalSettings, updatedBy?: string): Promise<PaypalSettings> {
+    const [existing] = await db.select().from(paypalSettings).where(eq(paypalSettings.id, "default"));
+    
+    if (existing) {
+      const [updated] = await db
+        .update(paypalSettings)
+        .set({ ...data, updatedAt: new Date(), updatedBy })
+        .where(eq(paypalSettings.id, "default"))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db
+      .insert(paypalSettings)
+      .values({ ...data, id: "default", updatedBy })
+      .returning();
+    return created;
   }
 }
 
