@@ -9,6 +9,8 @@ import { Footer } from "@/components/footer";
 import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { PendingApproval } from "@/components/pending-approval";
+import { LocationProvider, useLocationContext } from "@/contexts/LocationContext";
+import { GuestCartProvider } from "@/contexts/GuestCartContext";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -42,9 +44,10 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, isPending, isRejected } = useAuth();
+  const { isAuthenticated, isLoading, isPending, isRejected, isApproved } = useAuth();
+  const { isPortugal, canAccessPricesAsInternational, isLoading: locationLoading } = useLocationContext();
 
-  if (isLoading) {
+  if (isLoading || locationLoading) {
     return (
       <PublicLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -54,17 +57,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) {
-    window.location.href = "/login";
-    return null;
+  if (canAccessPricesAsInternational) {
+    return <PublicLayout>{children}</PublicLayout>;
   }
 
-  if (isPending || isRejected) {
-    return (
-      <PublicLayout>
-        <PendingApproval />
-      </PublicLayout>
-    );
+  if (isPortugal) {
+    if (!isAuthenticated) {
+      window.location.href = "/login";
+      return null;
+    }
+
+    if (isPending || isRejected) {
+      return (
+        <PublicLayout>
+          <PendingApproval />
+        </PublicLayout>
+      );
+    }
+
+    if (!isApproved) {
+      return (
+        <PublicLayout>
+          <PendingApproval />
+        </PublicLayout>
+      );
+    }
   }
 
   return <PublicLayout>{children}</PublicLayout>;
@@ -175,8 +192,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="cara-ui-theme">
         <TooltipProvider>
-          <Router />
-          <Toaster />
+          <LocationProvider>
+            <GuestCartProvider>
+              <Router />
+              <Toaster />
+            </GuestCartProvider>
+          </LocationProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -2,16 +2,25 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, ShoppingCart } from "lucide-react";
+import { Eye, ShoppingCart, Lock } from "lucide-react";
 import type { Product } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/LocationContext";
 
 interface ProductCardProps {
   product: Product;
   onAddToCart?: (product: Product) => void;
   isLoading?: boolean;
+  showPrices?: boolean;
 }
 
-export function ProductCard({ product, onAddToCart, isLoading }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, isLoading, showPrices = true }: ProductCardProps) {
+  const { isApproved } = useAuth();
+  const { canAccessPricesAsInternational, isPortugal } = useLocationContext();
+  
+  const canSeePrices = showPrices && (canAccessPricesAsInternational || (isPortugal && isApproved));
+  const canAddToCart = canSeePrices && product.inStock;
+
   const productColors: Record<string, string> = {
     soft: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
     mild: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
@@ -53,7 +62,7 @@ export function ProductCard({ product, onAddToCart, isLoading }: ProductCardProp
         <div className="p-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <Badge size="sm" className={colorClass}>
+              <Badge className={colorClass}>
                 {getProductType().toUpperCase()}
               </Badge>
             </div>
@@ -77,12 +86,19 @@ export function ProductCard({ product, onAddToCart, isLoading }: ProductCardProp
           </div>
 
           <div className="flex items-center justify-between gap-2 pt-2">
-            <span className="text-xl font-bold">
-              {Number(product.price).toLocaleString("pt-PT", {
-                style: "currency",
-                currency: "EUR",
-              })}
-            </span>
+            {canSeePrices ? (
+              <span className="text-xl font-bold" data-testid={`text-price-${product.id}`}>
+                {Number(product.price).toLocaleString("pt-PT", {
+                  style: "currency",
+                  currency: "EUR",
+                })}
+              </span>
+            ) : (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Lock className="h-4 w-4" />
+                <span className="text-sm">Login to see price</span>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -92,7 +108,7 @@ export function ProductCard({ product, onAddToCart, isLoading }: ProductCardProp
                 Ver Detalhes
               </Button>
             </Link>
-            {product.inStock && onAddToCart && (
+            {canAddToCart && onAddToCart && (
               <Button
                 size="icon"
                 onClick={() => onAddToCart(product)}

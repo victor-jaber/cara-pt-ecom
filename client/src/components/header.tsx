@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/LocationContext";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, User, LogOut, Settings, Package, Menu } from "lucide-react";
+import { ShoppingCart, User, LogOut, Settings, Package, Menu, Globe, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { CartItemWithProduct } from "@shared/schema";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -19,12 +20,15 @@ import { useState } from "react";
 
 export function Header() {
   const { user, isAuthenticated, isApproved, isAdmin } = useAuth();
+  const { isPortugal, isInternational, canAccessPricesAsInternational, resetLocation } = useLocationContext();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const canAccessProducts = canAccessPricesAsInternational || (isPortugal && isApproved);
+
   const { data: cartItems = [] } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: isApproved,
+    enabled: canAccessProducts,
   });
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -40,9 +44,9 @@ export function Header() {
   };
 
   const navLinks = [
-    { href: "/produtos", label: "Produtos", requiresApproval: true },
-    { href: "/sobre", label: "Sobre", requiresApproval: false },
-    { href: "/contacto", label: "Contacto", requiresApproval: false },
+    { href: "/produtos", label: "Produtos", requiresAccess: true },
+    { href: "/sobre", label: "Sobre", requiresAccess: false },
+    { href: "/contacto", label: "Contacto", requiresAccess: false },
   ];
 
   return (
@@ -55,7 +59,7 @@ export function Header() {
 
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
-              if (link.requiresApproval && !isApproved) return null;
+              if (link.requiresAccess && !canAccessProducts) return null;
               const isActive = location === link.href;
               return (
                 <Link key={link.href} href={link.href}>
@@ -74,11 +78,37 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1" data-testid="button-location">
+                {isPortugal ? (
+                  <>
+                    <MapPin className="h-4 w-4" />
+                    <span className="hidden sm:inline">PT</span>
+                  </>
+                ) : isInternational ? (
+                  <>
+                    <Globe className="h-4 w-4" />
+                    <span className="hidden sm:inline">INT</span>
+                  </>
+                ) : (
+                  <Globe className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={resetLocation} data-testid="menu-change-location">
+                <Globe className="mr-2 h-4 w-4" />
+                Change Location
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <ThemeToggle />
 
           {isAuthenticated ? (
             <>
-              {isApproved && (
+              {canAccessProducts && (
                 <Link href="/carrinho">
                   <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
                     <ShoppingCart className="h-5 w-5" />
@@ -156,6 +186,20 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
+          ) : canAccessPricesAsInternational ? (
+            <Link href="/carrinho">
+              <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <Badge
+                    variant="default"
+                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {cartCount}
+                  </Badge>
+                )}
+              </Button>
+            </Link>
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
@@ -180,7 +224,7 @@ export function Header() {
             <SheetContent side="right" className="w-72">
               <nav className="flex flex-col gap-2 mt-8">
                 {navLinks.map((link) => {
-                  if (link.requiresApproval && !isApproved) return null;
+                  if (link.requiresAccess && !canAccessProducts) return null;
                   return (
                     <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="ghost" className="w-full justify-start">
