@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, CreditCard } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import type { CartItemWithProduct } from "@shared/schema";
+import { PayPalButton } from "@/components/paypal-button";
 
 const checkoutSchema = z.object({
   shippingAddress: z.string().min(10, "Por favor insira um endereço de envio completo"),
@@ -209,25 +210,61 @@ export default function Checkout() {
                 </CardContent>
               </Card>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full lg:hidden"
-                disabled={createOrderMutation.isPending}
-                data-testid="button-submit-order-mobile"
-              >
-                {createOrderMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    A processar...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Confirmar Pedido
-                  </>
-                )}
-              </Button>
+              <div className="lg:hidden space-y-4">
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={createOrderMutation.isPending}
+                  data-testid="button-submit-order-mobile"
+                >
+                  {createOrderMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      A processar...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Confirmar Pedido
+                    </>
+                  )}
+                </Button>
+                
+                <div className="w-full">
+                  <div className="relative flex items-center justify-center my-2">
+                    <Separator className="flex-1" />
+                    <span className="px-3 text-xs text-muted-foreground bg-background">ou pague com</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <PayPalButton
+                    cart={cartItems.map(item => ({
+                      price: Number(item.product.price),
+                      quantity: item.quantity,
+                      name: item.product.name,
+                    }))}
+                    shippingAddress={form.watch("shippingAddress")}
+                    notes={form.watch("notes") || ""}
+                    disabled={!form.watch("shippingAddress") || form.watch("shippingAddress").length < 10}
+                    onSuccess={(details) => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                      toast({
+                        title: "Pagamento realizado com sucesso",
+                        description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
+                      });
+                      setLocation("/meus-pedidos");
+                    }}
+                    onError={(error) => {
+                      toast({
+                        title: "Erro no pagamento",
+                        description: error.message || "Não foi possível processar o pagamento.",
+                        variant: "destructive",
+                      });
+                    }}
+                  />
+                </div>
+              </div>
             </form>
           </Form>
         </div>
@@ -272,7 +309,7 @@ export default function Checkout() {
                 </span>
               </div>
             </CardContent>
-            <CardFooter className="hidden lg:block">
+            <CardFooter className="hidden lg:flex lg:flex-col lg:gap-4">
               <Button
                 className="w-full"
                 size="lg"
@@ -292,6 +329,40 @@ export default function Checkout() {
                   </>
                 )}
               </Button>
+              
+              <div className="w-full">
+                <div className="relative flex items-center justify-center my-2">
+                  <Separator className="flex-1" />
+                  <span className="px-3 text-xs text-muted-foreground bg-card">ou pague com</span>
+                  <Separator className="flex-1" />
+                </div>
+                <PayPalButton
+                  cart={cartItems.map(item => ({
+                    price: Number(item.product.price),
+                    quantity: item.quantity,
+                    name: item.product.name,
+                  }))}
+                  shippingAddress={form.watch("shippingAddress")}
+                  notes={form.watch("notes") || ""}
+                  disabled={!form.watch("shippingAddress") || form.watch("shippingAddress").length < 10}
+                  onSuccess={(details) => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                    toast({
+                      title: "Pagamento realizado com sucesso",
+                      description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
+                    });
+                    setLocation("/meus-pedidos");
+                  }}
+                  onError={(error) => {
+                    toast({
+                      title: "Erro no pagamento",
+                      description: error.message || "Não foi possível processar o pagamento.",
+                      variant: "destructive",
+                    });
+                  }}
+                />
+              </div>
             </CardFooter>
           </Card>
         </div>

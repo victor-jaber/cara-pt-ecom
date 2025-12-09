@@ -11,6 +11,30 @@ import type { Request, Response } from "express";
 let cachedClient: Client | null = null;
 let cachedSettings: { clientId: string; mode: string } | null = null;
 
+interface PendingPayPalOrder {
+  userId: string;
+  cartSnapshot: Array<{
+    productId: string;
+    quantity: number;
+    price: string;
+    name: string;
+  }>;
+  total: string;
+  createdAt: number;
+}
+
+const pendingPayPalOrders = new Map<string, PendingPayPalOrder>();
+
+setInterval(() => {
+  const now = Date.now();
+  const expireTime = 30 * 60 * 1000;
+  for (const [orderId, order] of pendingPayPalOrders.entries()) {
+    if (now - order.createdAt > expireTime) {
+      pendingPayPalOrders.delete(orderId);
+    }
+  }
+}, 5 * 60 * 1000);
+
 async function getPayPalClient(): Promise<Client | null> {
   const settings = await storage.getPaypalSettings();
   
@@ -68,15 +92,38 @@ export async function createPaypalOrder(req: Request, res: Response) {
       return res.status(400).json({ error: "PayPal is not configured or enabled" });
     }
 
-    const { cart } = req.body;
-    
-    if (!cart || !Array.isArray(cart) || cart.length === 0) {
-      return res.status(400).json({ error: "Cart is required" });
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ error: "Authentication required" });
     }
 
-    const total = cart.reduce((sum: number, item: { price: number; quantity: number }) => {
-      return sum + (item.price * item.quantity);
-    }, 0);
+    const cartItems = await storage.getCartItems(user.id);
+    if (cartItems.length === 0) {
+      return res.status(400).json({ error: "Cart is empty" });
+    }
+
+    const cartSnapshot: PendingPayPalOrder["cartSnapshot"] = [];
+    let total = 0;
+
+    for (const item of cartItems) {
+      const product = await storage.getProductById(item.productId);
+      if (!product) {
+        return res.status(400).json({ error: `Product ${item.product.name} is no longer available` });
+      }
+      if (!product.inStock) {
+        return res.status(400).json({ error: `Product ${product.name} is out of stock` });
+      }
+
+      const itemPrice = parseFloat(product.price);
+      total += itemPrice * item.quantity;
+
+      cartSnapshot.push({
+        productId: product.id,
+        quantity: item.quantity,
+        price: product.price,
+        name: product.name,
+      });
+    }
 
     const ordersController = new OrdersController(client);
 
@@ -95,6 +142,15 @@ export async function createPaypalOrder(req: Request, res: Response) {
       prefer: "return=minimal",
     });
 
+    const paypalOrderId = (response.result as any).id;
+    
+    pendingPayPalOrders.set(paypalOrderId, {
+      userId: user.id,
+      cartSnapshot,
+      total: total.toFixed(2),
+      createdAt: Date.now(),
+    });
+
     return res.json(response.result);
   } catch (error) {
     console.error("Error creating PayPal order:", error);
@@ -111,19 +167,82 @@ export async function capturePaypalOrder(req: Request, res: Response) {
     }
 
     const { orderID } = req.params;
+    const user = (req as any).user;
 
     if (!orderID) {
       return res.status(400).json({ error: "Order ID is required" });
+    }
+
+    if (!user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const pendingOrder = pendingPayPalOrders.get(orderID);
+    if (!pendingOrder) {
+      return res.status(400).json({ error: "PayPal order expired or not found. Please try again." });
+    }
+
+    if (pendingOrder.userId !== user.id) {
+      return res.status(403).json({ error: "Unauthorized to capture this order" });
+    }
+
+    for (const item of pendingOrder.cartSnapshot) {
+      const product = await storage.getProductById(item.productId);
+      if (!product) {
+        pendingPayPalOrders.delete(orderID);
+        return res.status(400).json({ error: `Product ${item.name} is no longer available` });
+      }
+      if (!product.inStock) {
+        pendingPayPalOrders.delete(orderID);
+        return res.status(400).json({ error: `Product ${product.name} is out of stock` });
+      }
     }
 
     const ordersController = new OrdersController(client);
 
     const response = await ordersController.captureOrder({
       id: orderID,
-      prefer: "return=minimal",
+      prefer: "return=representation",
     });
 
-    return res.json(response.result);
+    const captureResult = response.result as any;
+    const captureId = captureResult?.purchaseUnits?.[0]?.payments?.captures?.[0]?.id || "";
+    const payerEmail = captureResult?.payer?.emailAddress || "";
+
+    const orderItems = pendingOrder.cartSnapshot.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      orderId: "",
+    }));
+
+    const { shippingAddress = "", notes = "" } = req.body || {};
+
+    const order = await storage.createOrder(
+      {
+        userId: user.id,
+        total: pendingOrder.total,
+        shippingAddress: shippingAddress || user.clinicAddress || "",
+        notes,
+        status: "confirmed",
+        paymentMethod: "paypal",
+        paypalOrderId: orderID,
+        paypalCaptureId: captureId,
+      },
+      orderItems
+    );
+
+    pendingPayPalOrders.delete(orderID);
+
+    await storage.clearCart(user.id);
+
+    return res.json({
+      success: true,
+      orderId: order.id,
+      paypalOrderId: orderID,
+      paypalCaptureId: captureId,
+      payerEmail,
+    });
   } catch (error) {
     console.error("Error capturing PayPal order:", error);
     return res.status(500).json({ error: "Failed to capture PayPal order" });

@@ -27,6 +27,7 @@ import AdminApprovals from "@/pages/admin/approvals";
 import AdminOrders from "@/pages/admin/orders";
 import AdminProducts from "@/pages/admin/products";
 import AdminCustomers from "@/pages/admin/customers";
+import AdminPaypal from "@/pages/admin/paypal";
 import AuthPage from "@/pages/auth-page";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -112,6 +113,9 @@ function Router() {
         )} />
         <Route path="/admin/clientes" component={() => (
           <AdminRoute><AdminCustomers /></AdminRoute>
+        )} />
+        <Route path="/admin/paypal" component={() => (
+          <AdminRoute><AdminPaypal /></AdminRoute>
         )} />
         <Route component={() => (
           <AdminRoute><NotFound /></AdminRoute>

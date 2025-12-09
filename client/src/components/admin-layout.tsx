@@ -21,7 +21,8 @@ import {
   Package, 
   ShoppingCart, 
   Users,
-  ArrowLeft
+  ArrowLeft,
+  CreditCard
 } from "lucide-react";
 
 const adminNavItems = [
@@ -49,6 +50,11 @@ const adminNavItems = [
     title: "Clientes",
     href: "/admin/clientes",
     icon: Users,
+  },
+  {
+    title: "PayPal",
+    href: "/admin/paypal",
+    icon: CreditCard,
   },
 ];
 
