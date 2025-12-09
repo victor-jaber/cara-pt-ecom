@@ -430,12 +430,12 @@ export default function Landing() {
           </div>
 
           <AnimatedSection className="text-center">
-            <a href="/api/login">
+            <Link href="/login">
               <Button variant="outline" size="lg" className="gap-2" data-testid="button-view-catalog">
                 Ver Catálogo Completo
                 <ArrowRight className="w-4 h-4" />
               </Button>
-            </a>
+            </Link>
           </AnimatedSection>
         </div>
       </section>
@@ -857,45 +857,6 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-center md:text-left">
-              <div className="text-2xl font-bold text-primary mb-1">CARA</div>
-              <p className="text-sm text-muted-foreground">
-                Premium Hyaluronic Acid Filler by GENOSS
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-              <Link href="/sobre" className="hover:text-primary transition-colors">
-                Sobre
-              </Link>
-              <Link href="/contacto" className="hover:text-primary transition-colors">
-                Contacto
-              </Link>
-              <a href="/api/login" className="hover:text-primary transition-colors">
-                Área Profissional
-              </a>
-            </div>
-            
-            <div className="text-sm text-muted-foreground text-center md:text-right">
-              <p>Distribuído por PROMIPHARM</p>
-              <p>Registado no INFARMED</p>
-            </div>
-          </div>
-          
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>
-              CARA by GENOSS. Todos os direitos reservados.
-              <br />
-              Dispositivo médico de uso exclusivo profissional.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

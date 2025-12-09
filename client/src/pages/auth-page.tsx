@@ -82,6 +82,10 @@ export default function AuthPage() {
     }
   }, [tabParam]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const registerForm = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: {

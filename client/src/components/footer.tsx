@@ -10,6 +10,7 @@ export function Footer() {
   const handleProductClick = (e: React.MouseEvent, href: string) => {
     if (!isApproved) {
       e.preventDefault();
+      window.scrollTo(0, 0);
       setLocation("/login");
     }
   };
