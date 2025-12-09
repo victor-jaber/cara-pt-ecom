@@ -17,6 +17,11 @@ export async function registerRoutes(
     try {
       const validated = registerSchema.parse(req.body);
       
+      // Enforce terms acceptance - required for GDPR compliance
+      if (!validated.acceptTerms) {
+        return res.status(400).json({ message: "Deve aceitar as políticas de privacidade" });
+      }
+      
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(validated.email);
       if (existingUser) {

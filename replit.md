@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express.js
 - **Language**: TypeScript with ES modules
 - **API Pattern**: RESTful JSON APIs under `/api/*` prefix
-- **Authentication**: Replit OpenID Connect (OIDC) authentication with Passport.js
+- **Authentication**: Custom email/password authentication with bcrypt password hashing
 - **Session Management**: Express sessions stored in PostgreSQL via connect-pg-simple
 
 ### Data Layer
@@ -49,8 +49,11 @@ Preferred communication style: Simple, everyday language.
 - **Schema Tables**: users, products, orders, order_items, cart_items, sessions
 
 ### Authentication
-- **Replit Auth**: OpenID Connect integration via `ISSUER_URL` and `REPL_ID`
+- **Custom Auth**: Email/password authentication with bcrypt password hashing (10 rounds)
+- **Auth Endpoints**: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/user
+- **Registration Flow**: Users register with email, password, name, phone, profession; created with "pending" status
 - **Session Secret**: Requires `SESSION_SECRET` environment variable
+- **Login Page**: /login route with Portuguese form labels and validation messages
 
 ### Third-Party Services (configured but usage varies)
 - **Stripe**: Payment processing integration (in dependencies)
