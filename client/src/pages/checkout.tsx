@@ -4,9 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { calculateItemPrice, getApplicablePromotionRule } from "@/lib/pricing";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck } from "lucide-react";
+import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck, Tag } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 import { PayPalButton } from "@/components/paypal-button";
@@ -78,7 +80,7 @@ export default function Checkout() {
   });
 
   const subtotal = cartItems.reduce(
-    (acc, item) => acc + Number(item.product.price) * item.quantity,
+    (acc, item) => acc + calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules),
     0
   );
 
@@ -279,33 +281,67 @@ export default function Checkout() {
                   <CardTitle>Produtos ({cartItems.length})</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                          {item.product.image ? (
-                            <img
-                              src={item.product.image}
-                              alt={item.product.name}
-                              className="w-full h-full object-contain p-1"
-                            />
+                  {cartItems.map((item) => {
+                    const applicableRule = getApplicablePromotionRule(item.quantity, item.product.promotionRules);
+                    const originalTotal = Number(item.product.price) * item.quantity;
+                    const discountedTotal = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules);
+                    const hasDiscount = applicableRule !== null;
+                    
+                    return (
+                      <div key={item.id} className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                            {item.product.image ? (
+                              <img
+                                src={item.product.image}
+                                alt={item.product.name}
+                                className="w-full h-full object-contain p-1"
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">CARA</span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium text-sm">{item.product.name}</p>
+                              {hasDiscount && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  Promo
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {hasDiscount ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="text-xs text-muted-foreground line-through">
+                                {originalTotal.toLocaleString("pt-PT", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                })}
+                              </span>
+                              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                {discountedTotal.toLocaleString("pt-PT", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                })}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">CARA</span>
+                            <p className="font-medium">
+                              {originalTotal.toLocaleString("pt-PT", {
+                                style: "currency",
+                                currency: "EUR",
+                              })}
+                            </p>
                           )}
                         </div>
-                        <div>
-                          <p className="font-medium text-sm">{item.product.name}</p>
-                          <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
-                        </div>
                       </div>
-                      <p className="font-medium">
-                        {(Number(item.product.price) * item.quantity).toLocaleString("pt-PT", {
-                          style: "currency",
-                          currency: "EUR",
-                        })}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               </Card>
 
@@ -337,11 +373,14 @@ export default function Checkout() {
                     <Separator className="flex-1" />
                   </div>
                   <PayPalButton
-                    cart={cartItems.map(item => ({
-                      price: Number(item.product.price),
-                      quantity: item.quantity,
-                      name: item.product.name,
-                    }))}
+                    cart={cartItems.map(item => {
+                      const unitPrice = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity;
+                      return {
+                        price: unitPrice,
+                        quantity: item.quantity,
+                        name: item.product.name,
+                      };
+                    })}
                     shippingAddress={form.watch("shippingAddress")}
                     notes={form.watch("notes") || ""}
                     shippingOptionId={selectedShippingId || undefined}
@@ -446,11 +485,14 @@ export default function Checkout() {
                   <Separator className="flex-1" />
                 </div>
                 <PayPalButton
-                  cart={cartItems.map(item => ({
-                    price: Number(item.product.price),
-                    quantity: item.quantity,
-                    name: item.product.name,
-                  }))}
+                  cart={cartItems.map(item => {
+                    const unitPrice = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity;
+                    return {
+                      price: unitPrice,
+                      quantity: item.quantity,
+                      name: item.product.name,
+                    };
+                  })}
                   shippingAddress={form.watch("shippingAddress")}
                   notes={form.watch("notes") || ""}
                   shippingOptionId={selectedShippingId || undefined}

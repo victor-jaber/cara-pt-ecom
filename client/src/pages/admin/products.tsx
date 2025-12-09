@@ -31,15 +31,22 @@ import {
   Pencil,
   Trash2,
   RotateCcw,
-  Archive
+  Archive,
+  Tag
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product } from "@shared/schema";
+import type { Product, PromotionRule } from "@shared/schema";
 import { insertProductSchema } from "@shared/schema";
+
+const promotionRuleSchema = z.object({
+  minQuantity: z.number().min(1, "Quantidade mínima deve ser pelo menos 1"),
+  pricePerUnit: z.string().min(1, "Preço por unidade é obrigatório"),
+});
 
 const productFormSchema = insertProductSchema.extend({
   price: z.string().min(1, "Preço obrigatório"),
+  promotionRules: z.array(promotionRuleSchema).optional(),
 });
 
 type ProductFormData = z.infer<typeof productFormSchema>;
@@ -49,6 +56,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [promotionRules, setPromotionRules] = useState<PromotionRule[]>([]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -65,8 +73,27 @@ export default function AdminProducts() {
       applicationZones: "",
       infodmCode: "",
       inStock: true,
+      promotionRules: [],
     },
   });
+
+  const addPromotionRule = () => {
+    setPromotionRules([...promotionRules, { minQuantity: 1, pricePerUnit: "" }]);
+  };
+
+  const removePromotionRule = (index: number) => {
+    setPromotionRules(promotionRules.filter((_, i) => i !== index));
+  };
+
+  const updatePromotionRule = (index: number, field: keyof PromotionRule, value: string | number) => {
+    const updated = [...promotionRules];
+    if (field === "minQuantity") {
+      updated[index].minQuantity = typeof value === "string" ? parseInt(value) || 1 : value;
+    } else {
+      updated[index].pricePerUnit = value as string;
+    }
+    setPromotionRules(updated);
+  };
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/admin/products"],
@@ -138,6 +165,8 @@ export default function AdminProducts() {
 
   const openEditDialog = (product: Product) => {
     setEditingProduct(product);
+    const rules = product.promotionRules || [];
+    setPromotionRules(rules);
     form.reset({
       name: product.name,
       slug: product.slug,
@@ -151,12 +180,14 @@ export default function AdminProducts() {
       applicationZones: product.applicationZones || "",
       infodmCode: product.infodmCode || "",
       inStock: product.inStock ?? true,
+      promotionRules: rules,
     });
     setDialogOpen(true);
   };
 
   const openCreateDialog = () => {
     setEditingProduct(null);
+    setPromotionRules([]);
     form.reset({
       name: "",
       slug: "",
@@ -170,15 +201,21 @@ export default function AdminProducts() {
       applicationZones: "",
       infodmCode: "",
       inStock: true,
+      promotionRules: [],
     });
     setDialogOpen(true);
   };
 
   const onSubmit = (data: ProductFormData) => {
+    const validRules = promotionRules.filter(rule => rule.pricePerUnit.trim() !== "");
+    const dataWithRules = {
+      ...data,
+      promotionRules: validRules.length > 0 ? validRules : undefined,
+    };
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data });
+      updateMutation.mutate({ id: editingProduct.id, data: dataWithRules });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(dataWithRules);
     }
   };
 
@@ -492,6 +529,71 @@ export default function AdminProducts() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Regras de Promoção</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addPromotionRule}
+                    data-testid="button-add-promotion-rule"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar Regra
+                  </Button>
+                </div>
+                
+                {promotionRules.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma regra de promoção definida. Adicione regras para oferecer descontos por quantidade.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {promotionRules.map((rule, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="flex-1 grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">Qtd. Mínima</label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={rule.minQuantity}
+                              onChange={(e) => updatePromotionRule(index, "minQuantity", e.target.value)}
+                              placeholder="Ex: 5"
+                              data-testid={`input-promotion-min-qty-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Preço/Unidade (EUR)</label>
+                            <Input
+                              type="text"
+                              value={rule.pricePerUnit}
+                              onChange={(e) => updatePromotionRule(index, "pricePerUnit", e.target.value)}
+                              placeholder="Ex: 45.00"
+                              data-testid={`input-promotion-price-${index}`}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removePromotionRule(index)}
+                          className="mt-5"
+                          data-testid={`button-remove-promotion-rule-${index}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-4">

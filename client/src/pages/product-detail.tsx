@@ -1,13 +1,14 @@
 import { useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { calculateItemPrice, getApplicablePromotionRule } from "@/lib/pricing";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, Minus, Plus, ArrowLeft, CheckCircle2, Package } from "lucide-react";
+import { ShoppingCart, Minus, Plus, ArrowLeft, CheckCircle2, Package, Tag } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import type { Product } from "@shared/schema";
@@ -136,15 +137,95 @@ export default function ProductDetail() {
             )}
           </div>
 
-          <p className="text-xl font-bold text-primary">
-            {Number(product.price).toLocaleString("pt-PT", {
-              style: "currency",
-              currency: "EUR",
-            })}
-          </p>
+          {(() => {
+            const applicableRule = getApplicablePromotionRule(quantity, product.promotionRules);
+            const totalPrice = calculateItemPrice(quantity, product.price, product.promotionRules);
+            const originalTotal = Number(product.price) * quantity;
+            const hasDiscount = applicableRule !== null;
+            
+            return (
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {hasDiscount ? (
+                    <>
+                      <span className="text-lg text-muted-foreground line-through">
+                        {originalTotal.toLocaleString("pt-PT", {
+                          style: "currency",
+                          currency: "EUR",
+                        })}
+                      </span>
+                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {totalPrice.toLocaleString("pt-PT", {
+                          style: "currency",
+                          currency: "EUR",
+                        })}
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        <Tag className="h-3 w-3 mr-1" />
+                        Desconto Quantidade
+                      </Badge>
+                    </>
+                  ) : (
+                    <span className="text-xl font-bold text-foreground">
+                      {totalPrice.toLocaleString("pt-PT", {
+                        style: "currency",
+                        currency: "EUR",
+                      })}
+                    </span>
+                  )}
+                </div>
+                {quantity > 1 && (
+                  <p className="text-sm text-muted-foreground">
+                    {(totalPrice / quantity).toLocaleString("pt-PT", {
+                      style: "currency",
+                      currency: "EUR",
+                    })} / unidade
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {product.description && (
             <p className="text-muted-foreground">{product.description}</p>
+          )}
+
+          {product.promotionRules && product.promotionRules.length > 0 && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Descontos por Quantidade
+                </h3>
+                <div className="space-y-2">
+                  {[...product.promotionRules]
+                    .sort((a, b) => a.minQuantity - b.minQuantity)
+                    .map((rule, index) => {
+                      const isActive = getApplicablePromotionRule(quantity, product.promotionRules)?.minQuantity === rule.minQuantity;
+                      return (
+                        <div
+                          key={index}
+                          className={`flex justify-between items-center text-sm p-2 rounded-md ${
+                            isActive
+                              ? "bg-emerald-500/10 border border-emerald-500/30"
+                              : "bg-muted/50"
+                          }`}
+                        >
+                          <span className={isActive ? "font-medium" : ""}>
+                            A partir de {rule.minQuantity} unidades
+                          </span>
+                          <span className={`font-medium ${isActive ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                            {Number(rule.pricePerUnit).toLocaleString("pt-PT", {
+                              style: "currency",
+                              currency: "EUR",
+                            })} / unidade
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Technical Specs */}

@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { calculateItemPrice, getApplicablePromotionRule } from "@/lib/pricing";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Truck } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Truck, Tag } from "lucide-react";
 import { Link } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 
@@ -62,7 +64,7 @@ export default function Cart() {
   });
 
   const subtotal = cartItems.reduce(
-    (acc, item) => acc + Number(item.product.price) * item.quantity,
+    (acc, item) => acc + calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules),
     0
   );
   
@@ -211,12 +213,33 @@ export default function Cart() {
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <p className="font-semibold">
-                        {(Number(item.product.price) * item.quantity).toLocaleString("pt-PT", {
-                          style: "currency",
-                          currency: "EUR",
-                        })}
-                      </p>
+                      <div className="text-right">
+                        {(() => {
+                          const appliedRule = getApplicablePromotionRule(item.quantity, item.product.promotionRules);
+                          const itemTotal = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules);
+                          const regularTotal = Number(item.product.price) * item.quantity;
+                          const hasDiscount = appliedRule && itemTotal < regularTotal;
+                          
+                          return (
+                            <>
+                              {hasDiscount && (
+                                <p className="text-xs text-muted-foreground line-through">
+                                  {regularTotal.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                                </p>
+                              )}
+                              <p className="font-semibold">
+                                {itemTotal.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                              </p>
+                              {hasDiscount && (
+                                <Badge variant="secondary" className="text-xs mt-1">
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  {parseFloat(appliedRule.pricePerUnit).toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}/un
+                                </Badge>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
