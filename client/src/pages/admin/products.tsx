@@ -72,10 +72,8 @@ export default function AdminProducts() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
-      return apiRequest("/api/admin/products", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("POST", "/api/admin/products", data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -90,10 +88,8 @@ export default function AdminProducts() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ProductFormData }) => {
-      return apiRequest(`/api/admin/products/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("PATCH", `/api/admin/products/${id}`, data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -109,7 +105,7 @@ export default function AdminProducts() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/admin/products/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/admin/products/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -241,7 +237,7 @@ export default function AdminProducts() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{product.name}</h3>
-                      <Badge variant={product.inStock ? "default" : "secondary"} size="sm">
+                      <Badge variant={product.inStock ? "default" : "secondary"}>
                         {product.inStock ? "Em Stock" : "Sem Stock"}
                       </Badge>
                     </div>
