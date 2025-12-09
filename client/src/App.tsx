@@ -45,7 +45,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, isPending, isRejected, isApproved } = useAuth();
-  const { isPortugal, canAccessPricesAsInternational, isLoading: locationLoading } = useLocationContext();
+  const { isPortugal, isInternational, isLoading: locationLoading } = useLocationContext();
 
   if (isLoading || locationLoading) {
     return (
@@ -57,7 +57,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (canAccessPricesAsInternational) {
+  if (isInternational) {
     return <PublicLayout>{children}</PublicLayout>;
   }
 

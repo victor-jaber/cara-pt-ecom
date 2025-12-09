@@ -24,7 +24,7 @@ export default function Products() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
-  const { canAccessPricesAsInternational } = useLocationContext();
+  const { isInternational } = useLocationContext();
   const guestCart = useGuestCart();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -52,7 +52,7 @@ export default function Products() {
   });
 
   const handleAddToCart = (product: Product) => {
-    if (canAccessPricesAsInternational) {
+    if (isInternational) {
       guestCart.addItem(product);
       toast({
         title: "Produto adicionado",

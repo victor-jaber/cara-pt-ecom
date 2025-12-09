@@ -20,12 +20,12 @@ import { useGuestCart, type GuestCartItem } from "@/contexts/GuestCartContext";
 export default function Cart() {
   const { toast } = useToast();
   const [selectedShippingId, setSelectedShippingId] = useState<string>("");
-  const { canAccessPricesAsInternational } = useLocationContext();
+  const { isInternational } = useLocationContext();
   const guestCart = useGuestCart();
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: !canAccessPricesAsInternational,
+    enabled: !isInternational,
   });
 
   const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
@@ -68,7 +68,7 @@ export default function Cart() {
     },
   });
 
-  const isUsingGuestCart = canAccessPricesAsInternational;
+  const isUsingGuestCart = isInternational;
   const isLoading = isUsingGuestCart ? false : isLoadingApiCart;
   
   const cartItems: CartItemWithProduct[] = isUsingGuestCart
@@ -77,6 +77,7 @@ export default function Cart() {
         userId: "guest",
         productId: item.product.id,
         quantity: item.quantity,
+        createdAt: null,
         product: item.product,
       }))
     : apiCartItems;

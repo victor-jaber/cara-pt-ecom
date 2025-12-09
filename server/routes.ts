@@ -32,6 +32,9 @@ export async function registerRoutes(
       // Hash password
       const passwordHash = await hashPassword(validated.password);
 
+      // Auto-approve international users
+      const userStatus = validated.location === "international" ? "approved" : "pending";
+
       // Create user
       const user = await storage.createUser({
         email: validated.email,
@@ -41,7 +44,7 @@ export async function registerRoutes(
         phone: validated.phone,
         profession: validated.profession,
         additionalInfo: validated.additionalInfo || null,
-        status: "pending",
+        status: userStatus,
         role: "customer",
       });
 

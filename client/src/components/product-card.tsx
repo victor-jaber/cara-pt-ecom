@@ -16,9 +16,9 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onAddToCart, isLoading, showPrices = true }: ProductCardProps) {
   const { isApproved } = useAuth();
-  const { canAccessPricesAsInternational } = useLocationContext();
+  const { isInternational } = useLocationContext();
   
-  const canSeePrices = showPrices && (canAccessPricesAsInternational || isApproved);
+  const canSeePrices = showPrices && (isInternational || isApproved);
   const canAddToCart = canSeePrices && product.inStock;
 
   const productColors: Record<string, string> = {

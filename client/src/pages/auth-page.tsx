@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { z } from "zod";
+import { useLocationContext } from "@/contexts/LocationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(tabParam !== "register");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { location: userLocation, isInternational } = useLocationContext();
   
   useEffect(() => {
     if (tabParam === "register") {
@@ -112,15 +114,26 @@ export default function AuthPage() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterInput) => {
-      const res = await apiRequest("POST", "/api/auth/register", data);
+      const dataWithLocation = {
+        ...data,
+        location: userLocation || "portugal",
+      };
+      const res = await apiRequest("POST", "/api/auth/register", dataWithLocation);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({
-        title: "Registo efetuado com sucesso",
-        description: "A sua conta está pendente de aprovação.",
-      });
+      if (isInternational) {
+        toast({
+          title: "Registo efetuado com sucesso",
+          description: "A sua conta foi ativada. Pode começar a comprar.",
+        });
+      } else {
+        toast({
+          title: "Registo efetuado com sucesso",
+          description: "A sua conta está pendente de aprovação.",
+        });
+      }
       setLocation("/");
     },
     onError: (error: Error) => {

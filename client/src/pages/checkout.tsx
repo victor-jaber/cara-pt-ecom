@@ -47,10 +47,10 @@ export default function Checkout() {
   const urlParams = new URLSearchParams(searchString);
   const shippingFromUrl = urlParams.get("shipping") || "";
   const [selectedShippingId, setSelectedShippingId] = useState<string>(shippingFromUrl);
-  const { canAccessPricesAsInternational } = useLocationContext();
+  const { isInternational } = useLocationContext();
   const guestCart = useGuestCart();
 
-  const isGuestCheckout = canAccessPricesAsInternational;
+  const isGuestCheckout = isInternational;
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
@@ -69,6 +69,7 @@ export default function Checkout() {
         userId: "guest",
         productId: item.product.id,
         quantity: item.quantity,
+        createdAt: null,
         product: item.product,
       }))
     : apiCartItems;

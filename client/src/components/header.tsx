@@ -20,11 +20,11 @@ import { useState } from "react";
 
 export function Header() {
   const { user, isAuthenticated, isApproved, isAdmin } = useAuth();
-  const { isPortugal, isInternational, canAccessPricesAsInternational } = useLocationContext();
+  const { isPortugal, isInternational } = useLocationContext();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const canAccessProducts = canAccessPricesAsInternational || isApproved;
+  const canAccessProducts = isInternational || isApproved;
 
   const { data: cartItems = [] } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
@@ -177,7 +177,7 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
-          ) : canAccessPricesAsInternational ? (
+          ) : isInternational ? (
             <Link href="/carrinho">
               <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
                 <ShoppingCart className="h-5 w-5" />

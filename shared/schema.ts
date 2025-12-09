@@ -197,6 +197,7 @@ export const registerSchema = z.object({
   profession: z.string().min(1, "Selecione a sua profissão"),
   additionalInfo: z.string().optional(),
   acceptTerms: z.boolean(),
+  location: z.enum(["portugal", "international"]).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As palavras-passe não coincidem",
   path: ["confirmPassword"],
