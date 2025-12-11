@@ -58,14 +58,27 @@ export function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (!req.session.userId) {
+  // Try session first
+  let userId = req.session.userId;
+  
+  // Fallback to Authorization header (for environments where cookies don't work)
+  if (!userId) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      userId = authHeader.substring(7);
+    }
+  }
+  
+  if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   
   try {
-    const user = await storage.getUser(req.session.userId);
+    const user = await storage.getUser(userId);
     if (!user) {
-      req.session.destroy(() => {});
+      if (req.session.userId) {
+        req.session.destroy(() => {});
+      }
       return res.status(401).json({ message: "Unauthorized" });
     }
     (req as any).user = user;
