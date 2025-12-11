@@ -16,6 +16,15 @@ const db = drizzle(pool, { schema });
 async function seed() {
   console.log("Starting seed...");
 
+  // Run migrations for production compatibility
+  console.log("Running schema migrations...");
+  try {
+    await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR`);
+    console.log("Migration: category column ensured");
+  } catch (err) {
+    console.log("Migration note: category column already exists or migration skipped");
+  }
+
   const adminEmail = process.env.ADMIN_EMAIL || "admin@cara.pt";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
   const adminFirstName = process.env.ADMIN_FIRST_NAME || "Administrador";
@@ -56,58 +65,79 @@ async function seed() {
   if (!existingProducts) {
     await db.insert(schema.products).values([
       {
-        name: "CARA Light",
-        slug: "cara-light",
-        description: "Preenchedor de ácido hialurónico com lidocaína para rugas finas e linhas superficiais.",
-        shortDescription: "Ideal para rugas finas e superficiais",
-        price: "89.00",
-        particleSize: "Pequenas (100-200μm)",
+        name: "CARA Soft",
+        slug: "cara-soft",
+        category: "soft",
+        description: "Ácido hialurónico de partículas finas para correção de rugas superficiais e hidratação profunda da pele. Ideal para tratamentos de rejuvenescimento facial delicado.",
+        shortDescription: "Rugas superficiais e hidratação profunda",
+        price: "145.00",
+        particleSize: "0.2-0.3mm",
         needleSize: "30G",
-        injectionDepth: "Derme superficial",
-        applicationZones: "Rugas periorbitais, linhas finas, hidratação labial",
+        injectionDepth: "Dérmica superficial",
+        applicationZones: "Linhas periorais, região periocular, pescoço",
+        infodmCode: "CE2797",
         inStock: true,
         isActive: true,
         promotionRules: [
-          { minQuantity: 5, pricePerUnit: "85.00" },
-          { minQuantity: 10, pricePerUnit: "80.00" },
+          { minQuantity: 10, pricePerUnit: "130.00" },
         ],
       },
       {
-        name: "CARA Medium",
-        slug: "cara-medium",
-        description: "Preenchedor versátil para rugas moderadas e volumização facial.",
-        shortDescription: "Para rugas moderadas e volume",
-        price: "129.00",
-        particleSize: "Médias (200-400μm)",
+        name: "CARA Mild",
+        slug: "cara-mild",
+        category: "mild",
+        description: "Fórmula equilibrada para preenchimento de rugas moderadas e restauração de volume em áreas médias do rosto. Excelente para sulcos nasogenianos leves.",
+        shortDescription: "Rugas moderadas e restauração de volume",
+        price: "165.00",
+        particleSize: "0.4-0.5mm",
         needleSize: "27G",
-        injectionDepth: "Derme média",
-        applicationZones: "Sulcos nasogenianos, rugas marionete, volumização labial",
+        injectionDepth: "Dérmica média",
+        applicationZones: "Sulcos nasogenianos, contorno facial, mãos",
+        infodmCode: "CE2797",
         inStock: true,
         isActive: true,
         promotionRules: [
-          { minQuantity: 5, pricePerUnit: "120.00" },
-          { minQuantity: 10, pricePerUnit: "115.00" },
+          { minQuantity: 10, pricePerUnit: "150.00" },
         ],
       },
       {
-        name: "CARA Deep",
-        slug: "cara-deep",
-        description: "Preenchedor de alta densidade para restauração de volume e contorno facial.",
-        shortDescription: "Restauração de volume profundo",
-        price: "159.00",
-        particleSize: "Grandes (400-600μm)",
+        name: "CARA Hard",
+        slug: "cara-hard",
+        category: "hard",
+        description: "Gel coeso de alta densidade para correção de rugas profundas e restauração significativa de volume facial. Perfeito para sulcos profundos e contorno mandibular.",
+        shortDescription: "Rugas profundas e volume facial significativo",
+        price: "185.00",
+        particleSize: "0.8-1.0mm",
         needleSize: "25G",
-        injectionDepth: "Derme profunda / Subcutâneo",
-        applicationZones: "Maçãs do rosto, queixo, mandíbula, volumização profunda",
+        injectionDepth: "Dérmica profunda a subcutânea",
+        applicationZones: "Mandíbula, queixo, maçãs do rosto",
+        infodmCode: "CE2797",
         inStock: true,
         isActive: true,
         promotionRules: [
-          { minQuantity: 5, pricePerUnit: "150.00" },
-          { minQuantity: 10, pricePerUnit: "145.00" },
+          { minQuantity: 10, pricePerUnit: "170.00" },
+        ],
+      },
+      {
+        name: "CARA Ultra",
+        slug: "cara-ultra",
+        category: "ultra",
+        description: "Formulação premium de máxima densidade para volumização intensa e escultura facial. Ideal para aumento de volume em zigomáticos e remodelagem facial completa.",
+        shortDescription: "Volumização máxima e escultura facial",
+        price: "210.00",
+        particleSize: "1.2-1.4mm",
+        needleSize: "23G",
+        injectionDepth: "Subcutânea profunda",
+        applicationZones: "Zigomáticos, mandíbula, glúteos, mãos",
+        infodmCode: "CE2797",
+        inStock: true,
+        isActive: true,
+        promotionRules: [
+          { minQuantity: 10, pricePerUnit: "195.00" },
         ],
       },
     ]);
-    console.log("Sample products created");
+    console.log("Sample products created (CARA Soft, Mild, Hard, Ultra)");
   } else {
     console.log("Products already exist, skipping...");
   }

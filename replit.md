@@ -90,3 +90,34 @@ Para ativar o envio de emails (recuperação de senha, confirmações de pedido,
 - **TypeScript**: Strict mode enabled
 - **Drizzle Kit**: Database migration tooling
 - **Replit Plugins**: Runtime error overlay, cartographer, dev banner
+
+## Database Migrations
+
+### Seed & Migrations
+O script de seed (`scripts/seed.ts`) executa automaticamente as migrações necessárias antes de criar os dados iniciais.
+
+Para executar o seed (desenvolvimento ou produção):
+```bash
+npx tsx scripts/seed.ts
+```
+
+### Migração Manual (Produção)
+Se precisar executar migrações manualmente no banco de produção, acesse o painel de Database do Replit no deployment e execute:
+
+```sql
+-- Adicionar coluna category aos produtos (se não existir)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR;
+```
+
+### Categorias de Produtos
+Os produtos usam 4 categorias: `soft`, `mild`, `hard`, `ultra`
+- **soft**: Rugas superficiais e hidratação
+- **mild**: Rugas moderadas e volume
+- **hard**: Rugas profundas e contorno
+- **ultra**: Volumização máxima
+
+### Sincronização de Schema
+Para sincronizar o schema do Drizzle com o banco:
+```bash
+npm run db:push
+```
