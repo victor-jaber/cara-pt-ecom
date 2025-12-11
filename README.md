@@ -35,6 +35,26 @@ Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 | `PAYPAL_CLIENT_ID` | ID do cliente PayPal |
 | `PAYPAL_CLIENT_SECRET` | Segredo do cliente PayPal |
 
+### Opcionais (Email SMTP)
+
+Para ativar o envio de emails (recuperação de senha, confirmações de pedido, etc.):
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `SMTP_HOST` | Servidor SMTP | `smtp.gmail.com` |
+| `SMTP_PORT` | Porta do servidor | `587` (TLS) ou `465` (SSL) |
+| `SMTP_USER` | Email de autenticação | `seuemail@gmail.com` |
+| `SMTP_PASS` | Senha ou App Password | `sua-senha-de-app` |
+| `SMTP_FROM` | Email remetente | `CARA <noreply@cara.pt>` |
+
+**Nota para Gmail**: Use uma "Senha de App" em vez da senha normal. Acesse Google Account > Segurança > Senhas de app para criar uma.
+
+**Provedores recomendados**:
+- Gmail (gratuito, limite de 500 emails/dia)
+- SendGrid (100 emails/dia grátis)
+- Mailgun (5.000 emails/mês grátis)
+- Amazon SES (62.000 emails/mês grátis com AWS)
+
 ## Instalação
 
 ```bash
