@@ -44,15 +44,13 @@ declare module "express-session" {
 }
 
 export function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
   app.use(getSession());
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  console.log("isAuthenticated - Session ID:", req.session?.id);
-  console.log("isAuthenticated - Session userId:", req.session?.userId);
-  console.log("isAuthenticated - Cookies:", req.headers.cookie);
-  
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
