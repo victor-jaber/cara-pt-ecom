@@ -13,11 +13,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, User, LogOut, Settings, Package, Menu } from "lucide-react";
+import { 
+  ShoppingCart, 
+  User, 
+  LogOut, 
+  Settings, 
+  Package, 
+  Menu,
+  Home,
+  FlaskConical,
+  Info,
+  Phone,
+  Sparkles,
+  Shield,
+  Mail,
+  MapPin,
+  Heart,
+  X,
+  ChevronRight,
+  Award
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { CartItemWithProduct } from "@shared/schema";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useState } from "react";
+import { SiWhatsapp, SiInstagram, SiLinkedin } from "react-icons/si";
+
+const WHATSAPP_NUMBER = "351910060560";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Preciso de ajuda com a loja CARA.")}`;
 
 export function Header() {
   const { user, isAuthenticated, isApproved, isAdmin } = useAuth();
@@ -51,9 +74,10 @@ export function Header() {
   };
 
   const navLinks = [
-    { href: "/produtos", label: "Produtos", requiresAccess: true },
-    { href: "/sobre", label: "Sobre", requiresAccess: false },
-    { href: "/contacto", label: "Contacto", requiresAccess: false },
+    { href: "/", label: "Início", icon: Home, requiresAccess: false },
+    { href: "/produtos", label: "Produtos", icon: FlaskConical, requiresAccess: true },
+    { href: "/sobre", label: "Sobre Nós", icon: Info, requiresAccess: false },
+    { href: "/contacto", label: "Contacto", icon: Phone, requiresAccess: false },
   ];
 
   return (
@@ -231,19 +255,184 @@ export function Header() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
-              <nav className="flex flex-col gap-2 mt-8">
-                {navLinks.map((link) => {
-                  if (link.requiresAccess && !canAccessProducts) return null;
-                  return (
-                    <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start">
-                        {link.label}
-                      </Button>
+            <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-hidden">
+              {/* Header with gradient and logo */}
+              <div className="relative bg-gradient-to-br from-primary via-primary/90 to-pink-500 px-6 py-8 text-primary-foreground">
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48L3N2Zz4=')] opacity-50" />
+                <SheetClose className="absolute right-4 top-4 rounded-full bg-white/20 p-2 opacity-80 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Fechar</span>
+                </SheetClose>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">CARA</h2>
+                      <p className="text-xs opacity-80">Preenchimento Premium</p>
+                    </div>
+                  </div>
+                  {isAuthenticated && user && (
+                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/20">
+                      <Avatar className="h-10 w-10 border-2 border-white/30">
+                        <AvatarImage src={user?.profileImageUrl || undefined} />
+                        <AvatarFallback className="bg-white/20 text-primary-foreground">{getInitials()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs opacity-80 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <div className="flex-1 overflow-y-auto px-4 py-6">
+                <nav className="space-y-1">
+                  {navLinks.map((link, index) => {
+                    if (link.requiresAccess && !canAccessProducts) return null;
+                    const isActive = location === link.href;
+                    const Icon = link.icon;
+                    return (
+                      <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}>
+                        <div 
+                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                            isActive 
+                              ? 'bg-primary/10 text-primary' 
+                              : 'hover:bg-muted'
+                          }`}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                            isActive ? 'bg-primary text-primary-foreground' : 'bg-muted group-hover:bg-primary/20'
+                          }`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <span className="font-medium flex-1">{link.label}</span>
+                          <ChevronRight className={`w-4 h-4 transition-transform ${isActive ? 'text-primary' : 'text-muted-foreground'} group-hover:translate-x-1`} />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                {/* User Actions */}
+                {isAuthenticated && (
+                  <div className="mt-6 pt-6 border-t space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-2">Minha Conta</p>
+                    {isAdmin && (
+                      <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                        <div className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-muted transition-all group">
+                          <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                            <Settings className="w-5 h-5 text-orange-500" />
+                          </div>
+                          <span className="font-medium flex-1">Painel Admin</span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </Link>
+                    )}
+                    <Link href="/minha-conta" onClick={() => setMobileMenuOpen(false)}>
+                      <div className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-muted transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <span className="font-medium flex-1">Minha Conta</span>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </Link>
-                  );
-                })}
-              </nav>
+                    {isApproved && (
+                      <Link href="/meus-pedidos" onClick={() => setMobileMenuOpen(false)}>
+                        <div className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-muted transition-all group">
+                          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-purple-500" />
+                          </div>
+                          <span className="font-medium flex-1">Meus Pedidos</span>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </Link>
+                    )}
+                    <button 
+                      onClick={async () => {
+                        await fetch("/api/auth/logout", { method: "POST" });
+                        setMobileMenuOpen(false);
+                        window.location.href = "/";
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-red-500/10 transition-all group text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                        <LogOut className="w-5 h-5 text-red-500" />
+                      </div>
+                      <span className="font-medium flex-1 text-red-500">Sair</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Features Highlight */}
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-3">Porquê CARA?</p>
+                  <div className="grid grid-cols-2 gap-2 px-2">
+                    <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 text-center">
+                      <Shield className="w-5 h-5 text-primary mb-1" />
+                      <span className="text-xs font-medium">BDDE Indetectável</span>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-pink-500/5 to-pink-500/10 text-center">
+                      <Award className="w-5 h-5 text-pink-500 mb-1" />
+                      <span className="text-xs font-medium">INFARMED</span>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 text-center">
+                      <Sparkles className="w-5 h-5 text-blue-500 mb-1" />
+                      <span className="text-xs font-medium">Tech Hy-Brid</span>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-green-500/5 to-green-500/10 text-center">
+                      <Heart className="w-5 h-5 text-green-500 mb-1" />
+                      <span className="text-xs font-medium">Cruelty Free</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer with contact and social */}
+              <div className="border-t bg-muted/30 px-6 py-5">
+                {/* WhatsApp Support */}
+                <a 
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-green-500 text-white mb-4 hover:bg-green-600 transition-colors"
+                >
+                  <SiWhatsapp className="w-5 h-5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Suporte WhatsApp</p>
+                    <p className="text-xs opacity-80">Resposta em minutos</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </a>
+
+                {/* Social Links */}
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <a href="#" className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
+                    <SiInstagram className="w-4 h-4" />
+                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
+                    <SiLinkedin className="w-4 h-4" />
+                  </a>
+                  <a href="mailto:info@cara.pt" className="w-10 h-10 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
+                    <Mail className="w-4 h-4" />
+                  </a>
+                </div>
+
+                {/* Copyright */}
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">
+                    &copy; {new Date().getFullYear()} CARA by GENOSS
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Distribuído por PROMIPHARM
+                  </p>
+                </div>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
