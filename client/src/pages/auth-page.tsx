@@ -121,9 +121,9 @@ export default function AuthPage() {
       const res = await apiRequest("POST", "/api/auth/register", dataWithLocation);
       return res.json();
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: (data: { success: boolean; user: any }) => {
+      // Set user data directly in cache from response
+      queryClient.setQueryData(["/api/auth/user"], data.user);
       if (isInternational) {
         toast({
           title: "Registo efetuado com sucesso",
@@ -151,9 +151,9 @@ export default function AuthPage() {
       const res = await apiRequest("POST", "/api/auth/login", data);
       return res.json();
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+    onSuccess: (data: { success: boolean; user: any }) => {
+      // Set user data directly in cache from response
+      queryClient.setQueryData(["/api/auth/user"], data.user);
       setLocation("/");
     },
     onError: (error: Error) => {
