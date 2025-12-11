@@ -48,12 +48,18 @@ export async function registerRoutes(
         role: "customer",
       });
 
-      // Set session
+      // Set session and save it before responding
       req.session.userId = user.id;
-
-      res.json({ 
-        success: true, 
-        user: { ...user, passwordHash: undefined } 
+      
+      req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Falha ao criar sessão" });
+        }
+        res.json({ 
+          success: true, 
+          user: { ...user, passwordHash: undefined } 
+        });
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -79,12 +85,18 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
       }
 
-      // Set session
+      // Set session and save it before responding
       req.session.userId = user.id;
-
-      res.json({ 
-        success: true, 
-        user: { ...user, passwordHash: undefined } 
+      
+      req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Falha ao criar sessão" });
+        }
+        res.json({ 
+          success: true, 
+          user: { ...user, passwordHash: undefined } 
+        });
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
