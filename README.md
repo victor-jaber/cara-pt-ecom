@@ -79,12 +79,13 @@ npm run start
 
 ## Seed da Base de Dados
 
-O script de seed (`scripts/seed.ts`) cria:
+O script de seed (`scripts/seed.ts`) executa automaticamente as migrações necessárias e cria:
 
-1. **Usuário Administrador**: Com acesso ao painel admin
-2. **Produtos de Exemplo**: CARA Light, CARA Medium, CARA Deep
-3. **Opções de Envio**: Standard, Expresso e Grátis
-4. **Configurações PayPal**: Inicializadas em modo sandbox
+1. **Migrações**: Adiciona a coluna `category` se não existir
+2. **Usuário Administrador**: Com acesso ao painel admin
+3. **Produtos de Exemplo**: CARA Soft, CARA Mild, CARA Hard, CARA Ultra (com categorias)
+4. **Opções de Envio**: Standard, Expresso e Grátis
+5. **Configurações PayPal**: Inicializadas em modo sandbox
 
 ### Executar o Seed
 
@@ -95,6 +96,23 @@ npx tsx scripts/seed.ts
 # Com variáveis personalizadas
 ADMIN_EMAIL=seu@email.com ADMIN_PASSWORD=senha123 npx tsx scripts/seed.ts
 ```
+
+### Migração Manual (Produção)
+
+Se precisar executar migrações manualmente no banco de produção (sem usar o seed), acesse o painel de Database e execute:
+
+```sql
+-- Adicionar coluna category aos produtos (se não existir)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR;
+```
+
+### Categorias de Produtos
+
+Os produtos usam 4 categorias:
+- **soft**: Rugas superficiais e hidratação
+- **mild**: Rugas moderadas e volume
+- **hard**: Rugas profundas e contorno
+- **ultra**: Volumização máxima
 
 ### Credenciais Padrão do Admin
 
