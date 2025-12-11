@@ -82,11 +82,8 @@ export default function Products() {
         return matchesSearch;
       }
       
-      // Use the category field if available, otherwise fallback to name matching
-      const productCategory = (product as any).category;
-      const matchesCategory = productCategory 
-        ? productCategory === selectedCategory
-        : nameLower.includes(selectedCategory.toLowerCase());
+      // Use the category field directly
+      const matchesCategory = product.category === selectedCategory;
       
       return matchesSearch && matchesCategory;
     });
