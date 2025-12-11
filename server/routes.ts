@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, hashPassword, verifyPassword } from "./auth";
+import { isAuthenticated, hashPassword, verifyPassword } from "./auth";
 import { insertProductSchema, registerSchema, loginSchema, insertPaypalSettingsSchema, insertShippingOptionSchema } from "@shared/schema";
 import { z } from "zod";
 import { createPaypalOrder, capturePaypalOrder, loadPaypalDefault, clearPayPalClientCache } from "./paypal";
@@ -10,8 +10,6 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Auth middleware setup
-  setupAuth(app);
 
   // Register endpoint
   app.post("/api/auth/register", async (req, res) => {
