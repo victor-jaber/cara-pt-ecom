@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calculateItemPrice, getApplicablePromotionRule } from "@/lib/pricing";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +22,14 @@ export default function Cart() {
   const { toast } = useToast();
   const [selectedShippingId, setSelectedShippingId] = useState<string>("");
   const { isInternational } = useLocationContext();
+  const { isAuthenticated } = useAuth();
   const guestCart = useGuestCart();
+
+  const shouldUseGuestCart = isInternational && !isAuthenticated;
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: !isInternational,
+    enabled: !shouldUseGuestCart && isAuthenticated,
   });
 
   const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
@@ -68,10 +72,9 @@ export default function Cart() {
     },
   });
 
-  const isUsingGuestCart = isInternational;
-  const isLoading = isUsingGuestCart ? false : isLoadingApiCart;
+  const isLoading = shouldUseGuestCart ? false : isLoadingApiCart;
   
-  const cartItems: CartItemWithProduct[] = isUsingGuestCart
+  const cartItems: CartItemWithProduct[] = shouldUseGuestCart
     ? guestCart.items.map((item: GuestCartItem) => ({
         id: item.id,
         userId: "guest",
@@ -83,7 +86,7 @@ export default function Cart() {
     : apiCartItems;
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
-    if (isUsingGuestCart) {
+    if (shouldUseGuestCart) {
       guestCart.updateQuantity(id, quantity);
     } else {
       updateQuantityMutation.mutate({ id, quantity });
@@ -91,7 +94,7 @@ export default function Cart() {
   };
 
   const handleRemoveItem = (id: string) => {
-    if (isUsingGuestCart) {
+    if (shouldUseGuestCart) {
       guestCart.removeItem(id);
       toast({
         title: "Produto removido",
@@ -202,7 +205,7 @@ export default function Cart() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveItem(item.id)}
-                        disabled={!isUsingGuestCart && removeItemMutation.isPending}
+                        disabled={!shouldUseGuestCart && removeItemMutation.isPending}
                         data-testid={`button-remove-${item.id}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -216,7 +219,7 @@ export default function Cart() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                          disabled={item.quantity <= 1 || (!isUsingGuestCart && updateQuantityMutation.isPending)}
+                          disabled={item.quantity <= 1 || (!shouldUseGuestCart && updateQuantityMutation.isPending)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -232,7 +235,7 @@ export default function Cart() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          disabled={!isUsingGuestCart && updateQuantityMutation.isPending}
+                          disabled={!shouldUseGuestCart && updateQuantityMutation.isPending}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>

@@ -3,6 +3,7 @@ import { ProductCard } from "@/components/product-card";
 import { ProductGridSkeleton } from "@/components/loading-skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,10 @@ export default function Products() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const { isInternational } = useLocationContext();
+  const { isAuthenticated } = useAuth();
   const guestCart = useGuestCart();
+
+  const shouldUseGuestCart = isInternational && !isAuthenticated;
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -52,7 +56,7 @@ export default function Products() {
   });
 
   const handleAddToCart = (product: Product) => {
-    if (isInternational) {
+    if (shouldUseGuestCart) {
       guestCart.addItem(product);
       toast({
         title: "Produto adicionado",

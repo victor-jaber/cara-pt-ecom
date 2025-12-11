@@ -41,7 +41,7 @@ type GuestCheckoutForm = z.infer<typeof guestCheckoutSchema>;
 
 export default function Checkout() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
@@ -50,20 +50,24 @@ export default function Checkout() {
   const { isInternational } = useLocationContext();
   const guestCart = useGuestCart();
 
-  const isGuestCheckout = isInternational;
+  // International users must register/login to checkout (they get auto-approved)
+  const needsAuth = isInternational && !isAuthenticated;
+  
+  // Use API cart for authenticated users, guest cart for browsing
+  const useGuestCartItems = isInternational && !isAuthenticated;
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: !isGuestCheckout,
+    enabled: isAuthenticated,
   });
 
   const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
     queryKey: ["/api/shipping-options"],
   });
 
-  const isLoading = isGuestCheckout ? false : isLoadingApiCart;
+  const isLoading = useGuestCartItems ? false : isLoadingApiCart;
 
-  const cartItems: CartItemWithProduct[] = isGuestCheckout
+  const cartItems: CartItemWithProduct[] = useGuestCartItems
     ? guestCart.items.map((item: GuestCartItem) => ({
         id: item.id,
         userId: "guest",
@@ -188,16 +192,11 @@ export default function Checkout() {
     createGuestOrderMutation.mutate(data);
   };
 
-  const isFormValid = isGuestCheckout
-    ? guestForm.watch("guestName")?.length >= 2 &&
-      guestForm.watch("guestEmail")?.includes("@") &&
-      guestForm.watch("guestPhone")?.length >= 9 &&
-      guestForm.watch("shippingAddress")?.length >= 10 &&
-      (shippingOptions.length === 0 || selectedShippingId)
-    : form.watch("shippingAddress")?.length >= 10 && 
-      (shippingOptions.length === 0 || selectedShippingId);
+  // All users must be authenticated now, so only use the regular form validation
+  const isFormValid = form.watch("shippingAddress")?.length >= 10 && 
+    (shippingOptions.length === 0 || selectedShippingId);
 
-  const isPending = isGuestCheckout ? createGuestOrderMutation.isPending : createOrderMutation.isPending;
+  const isPending = createOrderMutation.isPending;
 
   if (isLoading || isLoadingShipping) {
     return (
@@ -220,6 +219,45 @@ export default function Checkout() {
             <Link href="/produtos">
               <Button className="mt-4">Ver Produtos</Button>
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (needsAuth) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Link href="/carrinho">
+          <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-cart">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar ao Carrinho
+          </Button>
+        </Link>
+
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <CardTitle>Criar Conta para Finalizar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <p className="text-muted-foreground">
+              Para finalizar a sua compra, é necessário criar uma conta ou fazer login.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Clientes internacionais são aprovados automaticamente.
+            </p>
+            <div className="flex flex-col gap-3 pt-4">
+              <Link href="/login?tab=register&redirect=/checkout">
+                <Button className="w-full" data-testid="button-register-checkout">
+                  Criar Conta
+                </Button>
+              </Link>
+              <Link href="/login?redirect=/checkout">
+                <Button variant="outline" className="w-full" data-testid="button-login-checkout">
+                  Já tenho conta - Entrar
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -427,7 +465,7 @@ export default function Checkout() {
         <Button
           className="w-full"
           size="lg"
-          onClick={isGuestCheckout ? guestForm.handleSubmit(onGuestSubmit) : form.handleSubmit(onSubmit)}
+          onClick={form.handleSubmit(onSubmit)}
           disabled={isPending || !isFormValid}
           data-testid="button-submit-order"
         >
@@ -444,45 +482,43 @@ export default function Checkout() {
           )}
         </Button>
         
-        {!isGuestCheckout && (
-          <div className="w-full">
-            <div className="relative flex items-center justify-center my-2">
-              <Separator className="flex-1" />
-              <span className="px-3 text-xs text-muted-foreground bg-card">ou pague com</span>
-              <Separator className="flex-1" />
-            </div>
-            <PayPalButton
-              cart={cartItems.map(item => {
-                const unitPrice = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity;
-                return {
-                  price: unitPrice,
-                  quantity: item.quantity,
-                  name: item.product.name,
-                };
-              })}
-              shippingAddress={form.watch("shippingAddress")}
-              notes={form.watch("notes") || ""}
-              shippingOptionId={selectedShippingId || undefined}
-              disabled={!isFormValid}
-              onSuccess={(details) => {
-                queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-                queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                toast({
-                  title: "Pagamento realizado com sucesso",
-                  description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
-                });
-                setLocation("/meus-pedidos");
-              }}
-              onError={(error) => {
-                toast({
-                  title: "Erro no pagamento",
-                  description: error.message || "Não foi possível processar o pagamento.",
-                  variant: "destructive",
-                });
-              }}
-            />
+        <div className="w-full">
+          <div className="relative flex items-center justify-center my-2">
+            <Separator className="flex-1" />
+            <span className="px-3 text-xs text-muted-foreground bg-card">ou pague com</span>
+            <Separator className="flex-1" />
           </div>
-        )}
+          <PayPalButton
+            cart={cartItems.map(item => {
+              const unitPrice = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity;
+              return {
+                price: unitPrice,
+                quantity: item.quantity,
+                name: item.product.name,
+              };
+            })}
+            shippingAddress={form.watch("shippingAddress")}
+            notes={form.watch("notes") || ""}
+            shippingOptionId={selectedShippingId || undefined}
+            disabled={!isFormValid}
+            onSuccess={(details) => {
+              queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+              toast({
+                title: "Pagamento realizado com sucesso",
+                description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
+              });
+              setLocation("/meus-pedidos");
+            }}
+            onError={(error) => {
+              toast({
+                title: "Erro no pagamento",
+                description: error.message || "Não foi possível processar o pagamento.",
+                variant: "destructive",
+              });
+            }}
+          />
+        </div>
       </CardFooter>
     </Card>
   );
@@ -500,137 +536,7 @@ export default function Checkout() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {isGuestCheckout ? (
-            <Form {...guestForm}>
-              <form onSubmit={guestForm.handleSubmit(onGuestSubmit)} className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dados de Envio</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={guestForm.control}
-                        name="guestName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nome Completo</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="O seu nome completo"
-                                {...field}
-                                data-testid="input-guest-name"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={guestForm.control}
-                        name="guestEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="email"
-                                placeholder="seu@email.com"
-                                {...field}
-                                data-testid="input-guest-email"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <FormField
-                      control={guestForm.control}
-                      name="guestPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="tel"
-                              placeholder="+351 912 345 678"
-                              {...field}
-                              data-testid="input-guest-phone"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={guestForm.control}
-                      name="shippingAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Endereço de Envio</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Rua, número, código postal, cidade, país..."
-                              {...field}
-                              data-testid="input-shipping-address"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={guestForm.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notas (opcional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Instruções especiais de entrega..."
-                              {...field}
-                              data-testid="input-notes"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <ShippingOptionsSection />
-                <ProductsSection />
-
-                <div className="lg:hidden space-y-4">
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="w-full"
-                    disabled={createGuestOrderMutation.isPending || !isFormValid}
-                    data-testid="button-submit-order-mobile"
-                  >
-                    {createGuestOrderMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        A processar...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Confirmar Pedido
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          ) : (
-            <Form {...form}>
+          <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -754,7 +660,6 @@ export default function Checkout() {
                 </div>
               </form>
             </Form>
-          )}
         </div>
 
         <div>

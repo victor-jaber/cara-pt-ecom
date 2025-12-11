@@ -3,6 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { calculateItemPrice, getApplicablePromotionRule } from "@/lib/pricing";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/LocationContext";
+import { useGuestCart } from "@/contexts/GuestCartContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,18 +20,29 @@ export default function ProductDetail() {
   const [, params] = useRoute("/produto/:slug");
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
+  const { isAuthenticated } = useAuth();
+  const { isInternational } = useLocationContext();
+  const guestCart = useGuestCart();
 
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ["/api/products", params?.slug],
     enabled: !!params?.slug,
   });
 
+  const shouldUseGuestCart = isInternational && !isAuthenticated;
+
   const addToCartMutation = useMutation({
     mutationFn: async () => {
+      if (shouldUseGuestCart && product) {
+        guestCart.addItem(product, quantity);
+        return;
+      }
       await apiRequest("POST", "/api/cart", { productId: product?.id, quantity });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      if (!shouldUseGuestCart) {
+        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      }
       toast({
         title: "Produto adicionado",
         description: `${quantity}x ${product?.name} adicionado ao carrinho.`,
