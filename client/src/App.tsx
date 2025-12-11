@@ -44,10 +44,11 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, isPending, isRejected, isApproved } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, isPending, isRejected, isApproved } = useAuth();
   const { isPortugal, isInternational, isLoading: locationLoading } = useLocationContext();
 
-  if (isLoading || locationLoading) {
+  // Wait for location detection first
+  if (locationLoading) {
     return (
       <PublicLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -57,25 +58,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // International users can access immediately without auth
   if (isInternational) {
     return <PublicLayout>{children}</PublicLayout>;
   }
 
+  // Portugal users need auth - wait for auth check
   if (isPortugal) {
+    if (authLoading) {
+      return (
+        <PublicLayout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-pulse text-muted-foreground">A carregar...</div>
+          </div>
+        </PublicLayout>
+      );
+    }
+
     if (!isAuthenticated) {
       window.location.href = "/login";
       return null;
     }
 
-    if (isPending || isRejected) {
-      return (
-        <PublicLayout>
-          <PendingApproval />
-        </PublicLayout>
-      );
-    }
-
-    if (!isApproved) {
+    if (isPending || isRejected || !isApproved) {
       return (
         <PublicLayout>
           <PendingApproval />
