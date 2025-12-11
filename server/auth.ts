@@ -23,7 +23,11 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  // Replit always uses HTTPS, so we need secure cookies even in development
+  const isReplit = !!(process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT);
   const isProduction = process.env.NODE_ENV === "production";
+  const useSecureCookies = isProduction || isReplit;
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -31,8 +35,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
+      secure: useSecureCookies,
+      sameSite: useSecureCookies ? "none" as const : "lax" as const,
       maxAge: sessionTtl,
     },
   });
@@ -45,7 +49,9 @@ declare module "express-session" {
 }
 
 export function setupAuth(app: Express) {
-  if (process.env.NODE_ENV === "production") {
+  // Trust proxy in production or Replit environment
+  const isReplit = !!(process.env.REPL_ID || process.env.REPLIT_DEPLOYMENT);
+  if (process.env.NODE_ENV === "production" || isReplit) {
     app.set("trust proxy", 1);
   }
   app.use(getSession());
