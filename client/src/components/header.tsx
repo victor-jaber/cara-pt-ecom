@@ -255,11 +255,11 @@ export function Header() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-hidden">
+            <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-hidden [&>button]:hidden">
               {/* Header with gradient and logo */}
               <div className="relative bg-gradient-to-br from-primary via-primary/90 to-pink-500 px-6 py-8 text-primary-foreground">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48L3N2Zz4=')] opacity-50" />
-                <SheetClose className="absolute right-4 top-4 rounded-full bg-white/20 p-2 opacity-80 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <SheetClose className="absolute right-4 top-4 rounded-full bg-white/20 p-2 opacity-80 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10">
                   <X className="h-4 w-4" />
                   <span className="sr-only">Fechar</span>
                 </SheetClose>
