@@ -211,6 +211,77 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
+function TableRow({ 
+  label, 
+  standard, 
+  result, 
+  isHighlight = false, 
+  isSuccess = false,
+  delay = 0 
+}: { 
+  label: string; 
+  standard: string; 
+  result: string; 
+  isHighlight?: boolean;
+  isSuccess?: boolean;
+  delay?: number;
+}) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  
+  return (
+    <tr 
+      ref={ref}
+      className={`transition-all duration-500 ${isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'} ${isHighlight ? 'bg-primary/5' : ''}`}
+      style={{ transitionDelay: `${delay * 1000}ms` }}
+    >
+      <td className="px-6 py-4 font-medium">{label}</td>
+      <td className={`px-6 py-4 ${isHighlight ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+        {standard}
+      </td>
+      <td className="px-6 py-4">
+        <span className={`font-bold ${isHighlight ? 'text-primary' : isSuccess ? 'text-green-600 dark:text-green-400' : ''}`}>
+          {result}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function SafetyStatCard({ 
+  icon: Icon, 
+  value, 
+  label, 
+  description, 
+  isHighlight = false,
+  delay = 0 
+}: { 
+  icon: typeof Shield; 
+  value: string; 
+  label: string; 
+  description: string;
+  isHighlight?: boolean;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay }}
+      viewport={{ once: true }}
+    >
+      <Card className={`text-center p-6 h-full ${isHighlight ? 'border-primary border-2 shadow-lg shadow-primary/20' : ''} hover-elevate overflow-visible`}>
+        <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${isHighlight ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
+          <Icon className={`w-8 h-8 ${isHighlight ? '' : 'text-primary'}`} />
+        </div>
+        <div className={`text-3xl font-bold mb-1 ${isHighlight ? 'text-primary' : ''}`}>{value}</div>
+        <div className="font-semibold text-sm">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1">{description}</div>
+      </Card>
+    </motion.div>
+  );
+}
+
 function ProductCard({ product, index }: { product: typeof products[0]; index: number }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-30px" });
@@ -535,8 +606,147 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Safety Performance Section - WOW Section */}
+      <section className="py-24 relative overflow-hidden">
+        {/* Animated Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl animate-pulse" />
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <AnimatedSection className="text-center mb-16">
+            <Badge variant="secondary" className="mb-4 animate-bounce">
+              <Shield className="w-3 h-3 mr-1" />
+              Seguranca Comprovada
+            </Badge>
+            <h2 className="text-4xl md:text-6xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-primary via-pink-500 to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
+                SEGURO
+              </span>
+              {" "}Para Uso em Pacientes
+            </h2>
+            <p className="text-muted-foreground max-w-3xl mx-auto text-lg leading-relaxed">
+              O risco de reacao alergica, edema e outros efeitos colaterais adversos foram minimizados 
+              pela reducao significativa do BDDE (agente quimico usado para reticulacao do acido hialuronico) 
+              ate ao ponto em que e <span className="text-primary font-bold">indetectavel</span>.
+            </p>
+          </AnimatedSection>
+
+          {/* Performance Test Table */}
+          <motion.div
+            className="max-w-4xl mx-auto"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <Card className="overflow-hidden border-2 border-primary/20 shadow-2xl shadow-primary/10">
+              <div className="bg-gradient-to-r from-primary/10 to-accent/10 px-6 py-4 border-b">
+                <h3 className="text-xl font-bold flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <FileCheck className="w-5 h-5 text-primary" />
+                  </div>
+                  Teste de Performance | <span className="text-primary">CARA</span>
+                </h3>
+              </div>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-6 py-4 text-left font-semibold">Aparencia</th>
+                        <th className="px-6 py-4 text-left font-semibold">Padrao</th>
+                        <th className="px-6 py-4 text-left font-semibold">Resultado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      <TableRow 
+                        label="HA3" 
+                        standard="Sem impurezas, transparente e incolor gel" 
+                        result="Pass" 
+                        isSuccess 
+                        delay={0}
+                      />
+                      <TableRow 
+                        label="Concentracao" 
+                        standard="21.6 ~ 26.4 mg" 
+                        result="24.1 mg" 
+                        delay={0.1}
+                      />
+                      <TableRow 
+                        label="pH" 
+                        standard="6.5 ~ 7.5" 
+                        result="7.10" 
+                        delay={0.2}
+                      />
+                      <TableRow 
+                        label="BDDE residual" 
+                        standard="< 2 ppm" 
+                        result="Nao detectado" 
+                        isHighlight 
+                        delay={0.3}
+                      />
+                      <TableRow 
+                        label="Endotoxina" 
+                        standard="< 20 EU" 
+                        result="< 0.100 EU" 
+                        isHighlight 
+                        delay={0.4}
+                      />
+                      <TableRow 
+                        label="Volume" 
+                        standard="> 1.0 mL" 
+                        result="Pass" 
+                        isSuccess 
+                        delay={0.5}
+                      />
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-muted/30 px-6 py-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">O que e BDDE?</span> O eter 1,4-butanodioldiglicidilico (BDDE) 
+                    e um agente quimico de reticulacao que transforma o acido hialuronico em gel. 
+                    O residuo BDDE nao deve exceder 2ppm.
+                  </p>
+                  <p className="text-sm font-bold text-primary mt-2 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Na CARA, o residuo BDDE foi indetectavel.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Animated Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-4xl mx-auto">
+            <SafetyStatCard 
+              icon={Shield} 
+              value="< 0.1 EU" 
+              label="Endotoxina" 
+              description="99.5% abaixo do limite" 
+              delay={0.2}
+            />
+            <SafetyStatCard 
+              icon={Sparkles} 
+              value="0 ppm" 
+              label="BDDE Detectado" 
+              description="Indetectavel" 
+              isHighlight 
+              delay={0.4}
+            />
+            <SafetyStatCard 
+              icon={Award} 
+              value="100%" 
+              label="Conformidade" 
+              description="Todos os testes aprovados" 
+              delay={0.6}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
-      <section className="py-24">
+      <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
@@ -869,11 +1079,14 @@ export default function Landing() {
         href={WHATSAPP_SUPPORT_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-16 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-xl animate-float group"
         data-testid="button-whatsapp-support"
         aria-label="Suporte WhatsApp"
       >
-        <SiWhatsapp className="w-7 h-7" />
+        <SiWhatsapp className="w-8 h-8 group-hover:scale-110 transition-transform" />
+        <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold animate-pulse">
+          1
+        </span>
       </a>
     </div>
   );
