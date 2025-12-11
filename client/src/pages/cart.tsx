@@ -25,7 +25,9 @@ export default function Cart() {
   const { isAuthenticated } = useAuth();
   const guestCart = useGuestCart();
 
-  const shouldUseGuestCart = isInternational && !isAuthenticated;
+  // International users always use guest cart (localStorage) for reliability
+  // Portugal users use API cart (requires authentication)
+  const shouldUseGuestCart = isInternational;
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],

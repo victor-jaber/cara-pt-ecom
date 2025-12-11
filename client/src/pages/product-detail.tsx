@@ -29,7 +29,9 @@ export default function ProductDetail() {
     enabled: !!params?.slug,
   });
 
-  const shouldUseGuestCart = isInternational && !isAuthenticated;
+  // International users always use guest cart (localStorage) for reliability
+  // Portugal users use API cart (requires authentication)
+  const shouldUseGuestCart = isInternational;
 
   const addToCartMutation = useMutation({
     mutationFn: async () => {
