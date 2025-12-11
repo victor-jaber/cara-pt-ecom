@@ -25,10 +25,16 @@ import {
   Microscope,
   Building2,
   Globe,
-  Play
+  Play,
+  MessageCircle
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
+import { SiWhatsapp } from "react-icons/si";
 import { useRef, useState } from "react";
+
+const WHATSAPP_NUMBER = "351910060560";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Gostaria de solicitar acesso profissional à loja CARA.")}`;
+const WHATSAPP_SUPPORT_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Preciso de ajuda com a loja CARA.")}`;
 
 const products = [
   { 
@@ -323,10 +329,10 @@ export default function Landing() {
               className="flex flex-col sm:flex-row gap-4 justify-center pt-4 animate-fade-in-up"
               style={{ animationDelay: '300ms' }}
             >
-              <a href="/api/login">
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="gap-2 text-lg px-8 py-6" data-testid="button-hero-register">
+                  <SiWhatsapp className="w-5 h-5" />
                   Solicitar Acesso Profissional
-                  <ArrowRight className="w-5 h-5" />
                 </Button>
               </a>
               <Link href="/sobre">
@@ -841,10 +847,10 @@ export default function Landing() {
               excepcionais. Solicite o seu acesso agora e comece a transformar vidas.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <a href="/api/login">
-                <Button size="lg" variant="secondary" className="text-lg px-8 py-6" data-testid="button-cta-register">
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                <Button size="lg" variant="secondary" className="gap-2 text-lg px-8 py-6" data-testid="button-cta-register">
+                  <SiWhatsapp className="w-5 h-5" />
                   Solicitar Acesso Profissional
-                  <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </a>
               <Link href="/contacto">
@@ -857,6 +863,18 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
+
+      {/* Floating WhatsApp Support Button */}
+      <a
+        href={WHATSAPP_SUPPORT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        data-testid="button-whatsapp-support"
+        aria-label="Suporte WhatsApp"
+      >
+        <SiWhatsapp className="w-7 h-7" />
+      </a>
     </div>
   );
 }
