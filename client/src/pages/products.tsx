@@ -8,29 +8,28 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Search, Filter, X } from "lucide-react";
+import { ShoppingBag, X } from "lucide-react";
 import type { Product } from "@shared/schema";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocationContext } from "@/contexts/LocationContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+const PRODUCT_CATEGORIES = [
+  { value: "all", label: "Todos" },
+  { value: "soft", label: "CARA SOFT" },
+  { value: "mild", label: "CARA MILD" },
+  { value: "hard", label: "CARA HARD" },
+  { value: "ultra", label: "CARA ULTRA" },
+] as const;
 
 export default function Products() {
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<string>("all");
+  const [searchText, setSearchText] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const { isInternational } = useLocationContext();
   const { isAuthenticated } = useAuth();
   const guestCart = useGuestCart();
 
-  // International users always use guest cart (localStorage) for reliability
-  // Portugal users use API cart (requires authentication)
   const shouldUseGuestCart = isInternational;
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -69,17 +68,31 @@ export default function Products() {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.description?.toLowerCase().includes(search.toLowerCase());
-    
-    if (filter === "all") return matchesSearch;
-    
-    const productType = product.name.toLowerCase();
-    return matchesSearch && productType.includes(filter.toLowerCase());
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const searchLower = searchText.toLowerCase().trim();
+      const nameLower = product.name.toLowerCase();
+      const descLower = (product.description || "").toLowerCase();
+      
+      const matchesSearch = searchLower === "" || 
+        nameLower.includes(searchLower) || 
+        descLower.includes(searchLower);
+      
+      if (selectedCategory === "all") {
+        return matchesSearch;
+      }
+      
+      const matchesCategory = nameLower.includes(selectedCategory.toLowerCase());
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchText, selectedCategory]);
 
-  const productTypes = ["soft", "mild", "hard", "ultra"];
+  const clearFilters = () => {
+    setSearchText("");
+    setSelectedCategory("all");
+  };
+
+  const hasActiveFilters = searchText !== "" || selectedCategory !== "all";
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -90,58 +103,69 @@ export default function Products() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+      {/* Search and Filter */}
+      <div className="flex flex-col gap-4 mb-8">
+        {/* Search Input */}
+        <div className="flex gap-2 items-center max-w-md">
           <Input
+            type="text"
             placeholder="Pesquisar produtos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 pr-10"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="flex-1"
             data-testid="input-search-products"
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 ${search ? 'visible' : 'invisible'}`}
-            onClick={() => setSearch("")}
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {searchText && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSearchText("")}
+              data-testid="button-clear-search"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-full md:w-48" data-testid="select-filter">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar por tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Produtos</SelectItem>
-            {productTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                CARA {type.toUpperCase()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Category Filter Buttons */}
+        <div className="flex flex-wrap gap-2">
+          {PRODUCT_CATEGORIES.map((cat) => (
+            <Button
+              key={cat.value}
+              variant={selectedCategory === cat.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(cat.value)}
+              data-testid={`filter-${cat.value}`}
+            >
+              {cat.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
-      {/* Active Filters */}
-      {(search || filter !== "all") && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {search && (
+      {/* Active Filters Summary */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {searchText && (
             <Badge variant="secondary" className="gap-1">
-              Pesquisa: {search}
-              <button onClick={() => setSearch("")} className="ml-1">
+              Pesquisa: {searchText}
+              <button 
+                onClick={() => setSearchText("")} 
+                className="ml-1 hover:text-destructive"
+                data-testid="badge-clear-search"
+              >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
           )}
-          {filter !== "all" && (
+          {selectedCategory !== "all" && (
             <Badge variant="secondary" className="gap-1">
-              Tipo: {filter.toUpperCase()}
-              <button onClick={() => setFilter("all")} className="ml-1">
+              Categoria: {PRODUCT_CATEGORIES.find(c => c.value === selectedCategory)?.label}
+              <button 
+                onClick={() => setSelectedCategory("all")} 
+                className="ml-1 hover:text-destructive"
+                data-testid="badge-clear-category"
+              >
                 <X className="h-3 w-3" />
               </button>
             </Badge>
@@ -149,10 +173,8 @@ export default function Products() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setSearch("");
-              setFilter("all");
-            }}
+            onClick={clearFilters}
+            data-testid="button-clear-all-filters"
           >
             Limpar filtros
           </Button>
