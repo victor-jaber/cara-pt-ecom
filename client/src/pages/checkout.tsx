@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -54,56 +53,20 @@ export default function Checkout() {
   // International users must register/login to checkout (they get auto-approved)
   const needsAuth = isInternational && !isAuthenticated;
   
-  // Use API cart for authenticated users, guest cart for browsing
-  const useGuestCartItems = isInternational && !isAuthenticated;
-  
-  // Track if we're in the process of transferring guest cart to API cart
-  const transferInProgress = useRef(false);
-  const [isTransferring, setIsTransferring] = useState(false);
+  // International users always use guest cart (localStorage) for reliability
+  // Portugal users use API cart (requires authentication)
+  const useGuestCartItems = isInternational;
 
-  const { data: apiCartItems = [], isLoading: isLoadingApiCart, refetch: refetchCart } = useQuery<CartItemWithProduct[]>({
+  const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: isAuthenticated,
+    enabled: !isInternational && isAuthenticated,
   });
-  
-  // Transfer guest cart items to API cart when user logs in
-  useEffect(() => {
-    const transferGuestCartToApi = async () => {
-      if (
-        isAuthenticated && 
-        isInternational && 
-        guestCart.items.length > 0 && 
-        !transferInProgress.current
-      ) {
-        transferInProgress.current = true;
-        setIsTransferring(true);
-        
-        try {
-          for (const item of guestCart.items) {
-            await apiRequest("POST", "/api/cart", { 
-              productId: item.product.id, 
-              quantity: item.quantity 
-            });
-          }
-          guestCart.clearCart();
-          await refetchCart();
-        } catch (error) {
-          console.error("Failed to transfer guest cart:", error);
-        } finally {
-          setIsTransferring(false);
-          transferInProgress.current = false;
-        }
-      }
-    };
-    
-    transferGuestCartToApi();
-  }, [isAuthenticated, isInternational, guestCart.items.length]);
 
   const { data: shippingOptions = [], isLoading: isLoadingShipping } = useQuery<ShippingOption[]>({
     queryKey: ["/api/shipping-options"],
   });
 
-  const isLoading = isTransferring || (useGuestCartItems ? false : isLoadingApiCart);
+  const isLoading = useGuestCartItems ? false : isLoadingApiCart;
 
   const cartItems: CartItemWithProduct[] = useGuestCartItems
     ? guestCart.items.map((item: GuestCartItem) => ({
