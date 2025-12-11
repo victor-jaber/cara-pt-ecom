@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/LocationContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
+import { clearStoredAuthUser } from "@/lib/authPersistence";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -199,6 +200,7 @@ export function Header() {
                     data-testid="menu-logout"
                     onClick={async () => {
                       await fetch("/api/auth/logout", { method: "POST" });
+                      clearStoredAuthUser();
                       window.location.href = "/";
                     }}
                   >
@@ -375,6 +377,7 @@ export function Header() {
                     <button 
                       onClick={async () => {
                         await fetch("/api/auth/logout", { method: "POST" });
+                        clearStoredAuthUser();
                         setMobileMenuOpen(false);
                         window.location.href = "/";
                       }}

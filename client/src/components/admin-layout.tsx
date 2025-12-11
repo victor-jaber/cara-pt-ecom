@@ -40,6 +40,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { clearStoredAuthUser } from "@/lib/authPersistence";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -95,6 +96,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     setIsLoggingOut(true);
     try {
       await apiRequest("POST", "/api/auth/logout");
+      clearStoredAuthUser();
       queryClient.clear();
       setLocation("/");
     } catch {

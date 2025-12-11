@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { saveAuthUser } from "@/lib/authPersistence";
 
 const registerSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -126,6 +127,8 @@ export default function AuthPage() {
     onSuccess: (data: { success: boolean; user: any }) => {
       // Set user data directly in cache from response
       queryClient.setQueryData(["/api/auth/user"], data.user);
+      // Persist to localStorage for session recovery (especially for international users)
+      saveAuthUser(data.user);
       if (isInternational) {
         toast({
           title: "Registo efetuado com sucesso",
@@ -156,6 +159,8 @@ export default function AuthPage() {
     onSuccess: (data: { success: boolean; user: any }) => {
       // Set user data directly in cache from response
       queryClient.setQueryData(["/api/auth/user"], data.user);
+      // Persist to localStorage for session recovery (especially for international users)
+      saveAuthUser(data.user);
       setLocation("/");
     },
     onError: (error: Error) => {
