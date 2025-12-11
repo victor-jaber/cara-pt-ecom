@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/LocationContext";
+import { useGuestCart } from "@/contexts/GuestCartContext";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -23,15 +24,19 @@ export function Header() {
   const { isPortugal, isInternational } = useLocationContext();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const guestCart = useGuestCart();
 
   const canAccessProducts = isInternational || isApproved;
+  const shouldUseGuestCart = isInternational && !isAuthenticated;
 
-  const { data: cartItems = [] } = useQuery<CartItemWithProduct[]>({
+  const { data: apiCartItems = [] } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: canAccessProducts,
+    enabled: isAuthenticated && canAccessProducts,
   });
 
-  const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const cartCount = shouldUseGuestCart 
+    ? guestCart.items.reduce((acc, item) => acc + item.quantity, 0)
+    : apiCartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -178,19 +183,31 @@ export function Header() {
               </DropdownMenu>
             </>
           ) : isInternational ? (
-            <Link href="/carrinho">
-              <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <Badge
-                    variant="default"
-                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {cartCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/carrinho">
+                <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <Badge
+                      variant="default"
+                      className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {cartCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="ghost" size="sm" data-testid="button-login">
+                  Entrar
+                </Button>
+              </Link>
+              <Link href="/login?tab=register">
+                <Button size="sm" data-testid="button-register">
+                  Criar Conta
+                </Button>
+              </Link>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Link href="/login">
