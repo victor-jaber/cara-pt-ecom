@@ -29,6 +29,7 @@ export function ProductCard({ product, onAddToCart, isLoading, showPrices = true
   };
 
   const getProductType = () => {
+    if (product.category) return product.category;
     const name = product.name.toLowerCase();
     if (name.includes("soft")) return "soft";
     if (name.includes("mild")) return "mild";
@@ -37,7 +38,8 @@ export function ProductCard({ product, onAddToCart, isLoading, showPrices = true
     return "soft";
   };
 
-  const colorClass = productColors[getProductType()];
+  const productType = getProductType();
+  const colorClass = productColors[productType] || productColors.soft;
 
   return (
     <Card className="group overflow-visible hover-elevate" data-testid={`card-product-${product.id}`}>
@@ -63,7 +65,7 @@ export function ProductCard({ product, onAddToCart, isLoading, showPrices = true
           <div className="flex items-start justify-between gap-2">
             <div>
               <Badge className={colorClass}>
-                {getProductType().toUpperCase()}
+                {productType.toUpperCase()}
               </Badge>
             </div>
           </div>
