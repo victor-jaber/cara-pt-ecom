@@ -93,24 +93,22 @@ export default function Products() {
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <Input
             placeholder="Pesquisar produtos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-10"
             data-testid="input-search-products"
           />
-          {search && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-              onClick={() => setSearch("")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 ${search ? 'visible' : 'invisible'}`}
+            onClick={() => setSearch("")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         <Select value={filter} onValueChange={setFilter}>

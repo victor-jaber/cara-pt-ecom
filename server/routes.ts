@@ -100,9 +100,15 @@ export async function registerRoutes(
         req.session.userId = user.id;
         
         // Adjust session cookie duration based on "remember me" checkbox
-        // If rememberMe is true, keep the default 1 week; otherwise, set to session-only (browser close)
-        if (!validated.rememberMe && req.session.cookie) {
-          req.session.cookie.maxAge = undefined; // Session cookie expires when browser closes
+        if (req.session.cookie) {
+          if (validated.rememberMe) {
+            // Remember me: 30 days
+            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+          } else {
+            // Session only: expires when browser closes (set very short maxAge to trigger session cookie behavior)
+            req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 1 day as fallback
+            req.session.cookie.expires = false as any; // Session cookie - expires on browser close
+          }
         }
         
         req.session.save((err) => {
