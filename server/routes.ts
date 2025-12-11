@@ -391,6 +391,95 @@ export async function registerRoutes(
     }
   });
 
+  // International authenticated orders route (bypasses session cookies)
+  app.post("/api/international-orders", async (req, res) => {
+    try {
+      const { userId, shippingAddress, notes, shippingOptionId, items } = req.body;
+
+      // Validate required fields
+      if (!userId || !shippingAddress) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No items in order" });
+      }
+
+      // Verify user exists and is approved
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      if (user.status !== "approved") {
+        return res.status(403).json({ message: "Account not approved" });
+      }
+
+      // Check if shipping options exist and require selection
+      const activeShippingOptions = await storage.getActiveShippingOptions();
+      if (activeShippingOptions.length > 0 && !shippingOptionId) {
+        return res.status(400).json({ message: "Shipping option is required" });
+      }
+
+      // Verify all products and calculate total using authoritative prices
+      const orderItems = [];
+      let calculatedTotal = 0;
+
+      for (const item of items) {
+        const product = await storage.getProductById(item.productId);
+        if (!product) {
+          return res.status(400).json({ message: `Product not found` });
+        }
+        if (!product.inStock) {
+          return res.status(400).json({ message: `Product ${product.name} is out of stock` });
+        }
+
+        const itemPrice = parseFloat(product.price);
+        calculatedTotal += itemPrice * item.quantity;
+
+        orderItems.push({
+          productId: product.id,
+          quantity: item.quantity,
+          price: product.price,
+          orderId: "",
+        });
+      }
+
+      // Handle shipping option
+      let shippingCost = 0;
+      let shippingOptionName = null;
+      let validShippingOptionId = null;
+      if (shippingOptionId) {
+        const shippingOption = await storage.getShippingOptionById(shippingOptionId);
+        if (!shippingOption || !shippingOption.isActive) {
+          return res.status(400).json({ message: "Invalid or inactive shipping option" });
+        }
+        shippingCost = parseFloat(shippingOption.price);
+        shippingOptionName = shippingOption.name;
+        validShippingOptionId = shippingOptionId;
+      }
+
+      // Create order
+      const order = await storage.createOrder(
+        {
+          userId: user.id,
+          total: (calculatedTotal + shippingCost).toFixed(2),
+          shippingAddress,
+          notes: notes || "",
+          status: "pending",
+          shippingOptionId: validShippingOptionId,
+          shippingCost: shippingCost.toFixed(2),
+          shippingOptionName,
+        },
+        orderItems
+      );
+
+      res.json(order);
+    } catch (error) {
+      console.error("Error creating international order:", error);
+      res.status(500).json({ message: "Failed to create order" });
+    }
+  });
+
   // Guest orders route (for international users who confirmed they are medical professionals)
   app.post("/api/guest-orders", async (req, res) => {
     try {

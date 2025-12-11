@@ -100,6 +100,25 @@ export default function Checkout() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: CheckoutForm) => {
+      // International users use the international-orders endpoint with cart items in request
+      if (isInternational && user) {
+        const orderItems = cartItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          price: calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity,
+        }));
+        
+        const response = await apiRequest("POST", "/api/international-orders", {
+          userId: user.id,
+          shippingAddress: data.shippingAddress,
+          notes: data.notes,
+          shippingOptionId: selectedShippingId || undefined,
+          items: orderItems,
+        });
+        return response;
+      }
+      
+      // Portugal users use the regular orders endpoint (session-based)
       const response = await apiRequest("POST", "/api/orders", {
         ...data,
         shippingOptionId: selectedShippingId || undefined,
@@ -107,6 +126,10 @@ export default function Checkout() {
       return response;
     },
     onSuccess: () => {
+      // Clear guest cart for international users
+      if (isInternational) {
+        guestCart.clearCart();
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       toast({
