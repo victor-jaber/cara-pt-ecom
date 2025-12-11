@@ -846,7 +846,7 @@ export async function registerRoutes(
   });
 
   // Shipping options routes (public - for checkout)
-  app.get("/api/shipping-options", isAuthenticated, isApproved, async (req, res) => {
+  app.get("/api/shipping-options", async (req, res) => {
     try {
       const options = await storage.getActiveShippingOptions();
       res.json(options);
