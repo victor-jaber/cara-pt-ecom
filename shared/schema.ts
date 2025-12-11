@@ -61,10 +61,14 @@ export type PromotionRule = {
 };
 
 // Products table
+export const productCategories = ["soft", "mild", "hard", "ultra"] as const;
+export type ProductCategory = typeof productCategories[number];
+
 export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   slug: varchar("slug").notNull().unique(),
+  category: varchar("category").$type<ProductCategory>(),
   description: text("description"),
   shortDescription: text("short_description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),

@@ -44,10 +44,17 @@ import {
   Archive,
   Tag
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, PromotionRule } from "@shared/schema";
-import { insertProductSchema } from "@shared/schema";
+import { insertProductSchema, productCategories } from "@shared/schema";
 
 const promotionRuleSchema = z.object({
   minQuantity: z.number().min(1, "Quantidade mínima deve ser pelo menos 1"),
@@ -74,6 +81,7 @@ export default function AdminProducts() {
     defaultValues: {
       name: "",
       slug: "",
+      category: undefined,
       description: "",
       shortDescription: "",
       price: "",
@@ -202,6 +210,7 @@ export default function AdminProducts() {
     form.reset({
       name: product.name,
       slug: product.slug,
+      category: product.category || undefined,
       description: product.description || "",
       shortDescription: product.shortDescription || "",
       price: product.price,
@@ -223,6 +232,7 @@ export default function AdminProducts() {
     form.reset({
       name: "",
       slug: "",
+      category: undefined,
       description: "",
       shortDescription: "",
       price: "",
@@ -429,7 +439,31 @@ export default function AdminProducts() {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-product-category">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {productCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              CARA {cat.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="price"

@@ -82,7 +82,12 @@ export default function Products() {
         return matchesSearch;
       }
       
-      const matchesCategory = nameLower.includes(selectedCategory.toLowerCase());
+      // Use the category field if available, otherwise fallback to name matching
+      const productCategory = (product as any).category;
+      const matchesCategory = productCategory 
+        ? productCategory === selectedCategory
+        : nameLower.includes(selectedCategory.toLowerCase());
+      
       return matchesSearch && matchesCategory;
     });
   }, [products, searchText, selectedCategory]);
