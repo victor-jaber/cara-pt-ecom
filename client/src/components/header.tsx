@@ -82,10 +82,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
-        <div className="flex items-center gap-6">
-          <Link href="/" data-testid="link-home">
-            <img src="/logo.webp" alt="CARA" className="h-10" />
+      <div className="container mx-auto flex h-16 items-center justify-between gap-2 md:gap-4 px-4">
+        <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
+          <Link href="/" data-testid="link-home" className="flex-shrink-0">
+            <img src="/logo.webp" alt="CARA" className="h-8 md:h-10" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -110,7 +110,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <div 
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-sm"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-sm"
             data-testid="location-indicator"
           >
             {isPortugal ? (
@@ -223,19 +223,19 @@ export function Header() {
                   )}
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href="/login" className="hidden md:block">
                 <Button variant="ghost" size="sm" data-testid="button-login">
                   Entrar
                 </Button>
               </Link>
-              <Link href="/login?tab=register">
+              <Link href="/login?tab=register" className="hidden md:block">
                 <Button size="sm" data-testid="button-register">
                   Criar Conta
                 </Button>
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <Link href="/login">
                 <Button variant="ghost" size="sm" data-testid="button-login">
                   Entrar
@@ -273,7 +273,7 @@ export function Header() {
                       <p className="text-xs opacity-80">Preenchimento Premium</p>
                     </div>
                   </div>
-                  {isAuthenticated && user && (
+                  {isAuthenticated && user ? (
                     <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/20">
                       <Avatar className="h-10 w-10 border-2 border-white/30">
                         <AvatarImage src={user?.profileImageUrl || undefined} />
@@ -283,6 +283,19 @@ export function Header() {
                         <p className="font-medium truncate">{user.firstName} {user.lastName}</p>
                         <p className="text-xs opacity-80 truncate">{user.email}</p>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 mt-4 pt-4 border-t border-white/20">
+                      <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1">
+                        <Button variant="outline" className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20">
+                          Entrar
+                        </Button>
+                      </Link>
+                      <Link href="/login?tab=register" onClick={() => setMobileMenuOpen(false)} className="flex-1">
+                        <Button className="w-full bg-white text-primary hover:bg-white/90">
+                          {isPortugal ? "Solicitar Acesso" : "Criar Conta"}
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </div>
