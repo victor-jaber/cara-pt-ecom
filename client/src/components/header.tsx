@@ -27,11 +27,13 @@ export function Header() {
   const guestCart = useGuestCart();
 
   const canAccessProducts = isInternational || isApproved;
-  const shouldUseGuestCart = isInternational && !isAuthenticated;
+  
+  // International users always use guest cart (localStorage) for reliability
+  const shouldUseGuestCart = isInternational;
 
   const { data: apiCartItems = [] } = useQuery<CartItemWithProduct[]>({
     queryKey: ["/api/cart"],
-    enabled: isAuthenticated && canAccessProducts,
+    enabled: !isInternational && isAuthenticated && canAccessProducts,
   });
 
   const cartCount = shouldUseGuestCart 
