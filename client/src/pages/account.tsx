@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -34,16 +35,32 @@ export default function Account() {
   const form = useForm<AccountForm>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      phone: user?.phone || "",
-      nif: user?.nif || "",
-      professionalLicense: user?.professionalLicense || "",
-      specialty: user?.specialty || "",
-      clinicName: user?.clinicName || "",
-      clinicAddress: user?.clinicAddress || "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      nif: "",
+      professionalLicense: "",
+      specialty: "",
+      clinicName: "",
+      clinicAddress: "",
     },
   });
+
+  // Reset form when user data loads (fixes data disappearing on refresh)
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        nif: user.nif || "",
+        professionalLicense: user.professionalLicense || "",
+        specialty: user.specialty || "",
+        clinicName: user.clinicName || "",
+        clinicAddress: user.clinicAddress || "",
+      });
+    }
+  }, [user, form]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: AccountForm) => {
