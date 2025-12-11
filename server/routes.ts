@@ -50,12 +50,16 @@ export async function registerRoutes(
 
       // Set session and save it before responding
       req.session.userId = user.id;
+      console.log("Session ID after setting userId:", req.session.id);
+      console.log("Session cookie:", req.session.cookie);
       
       req.session.save((err) => {
         if (err) {
           console.error("Error saving session:", err);
           return res.status(500).json({ message: "Falha ao criar sessão" });
         }
+        console.log("Session saved successfully, ID:", req.session.id);
+        console.log("Response headers before send:", res.getHeaders());
         res.json({ 
           success: true, 
           user: { ...user, passwordHash: undefined } 
