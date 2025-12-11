@@ -7,10 +7,21 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Package, ShoppingBag } from "lucide-react";
 import { Link } from "wouter";
 import type { OrderWithItems } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/LocationContext";
 
 export default function Orders() {
+  const { user } = useAuth();
+  const { isInternational } = useLocationContext();
+  
+  // International users use the alternative route with userId in path
+  const ordersEndpoint = isInternational && user 
+    ? `/api/international-orders/${user.id}` 
+    : "/api/orders";
+  
   const { data: orders = [], isLoading } = useQuery<OrderWithItems[]>({
-    queryKey: ["/api/orders"],
+    queryKey: [ordersEndpoint],
+    enabled: !!user,
   });
 
   const getStatusBadge = (status: string) => {

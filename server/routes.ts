@@ -391,6 +391,25 @@ export async function registerRoutes(
     }
   });
 
+  // International user orders route (bypasses session cookies)
+  app.get("/api/international-orders/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const orders = await storage.getOrdersByUser(userId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching international orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
   // International authenticated orders route (bypasses session cookies)
   app.post("/api/international-orders", async (req, res) => {
     try {
