@@ -48,21 +48,24 @@ export async function registerRoutes(
         role: "customer",
       });
 
-      // Set session and save it before responding
-      req.session.userId = user.id;
-      console.log("Session ID after setting userId:", req.session.id);
-      console.log("Session cookie:", req.session.cookie);
-      
-      req.session.save((err) => {
+      // Regenerate session to ensure new cookie is sent
+      req.session.regenerate((err) => {
         if (err) {
-          console.error("Error saving session:", err);
+          console.error("Error regenerating session:", err);
           return res.status(500).json({ message: "Falha ao criar sessão" });
         }
-        console.log("Session saved successfully, ID:", req.session.id);
-        console.log("Response headers before send:", res.getHeaders());
-        res.json({ 
-          success: true, 
-          user: { ...user, passwordHash: undefined } 
+        
+        req.session.userId = user.id;
+        
+        req.session.save((err) => {
+          if (err) {
+            console.error("Error saving session:", err);
+            return res.status(500).json({ message: "Falha ao criar sessão" });
+          }
+          res.json({ 
+            success: true, 
+            user: { ...user, passwordHash: undefined } 
+          });
         });
       });
     } catch (error) {
@@ -89,17 +92,24 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
       }
 
-      // Set session and save it before responding
-      req.session.userId = user.id;
-      
-      req.session.save((err) => {
+      // Regenerate session to ensure new cookie is sent
+      req.session.regenerate((err) => {
         if (err) {
-          console.error("Error saving session:", err);
+          console.error("Error regenerating session:", err);
           return res.status(500).json({ message: "Falha ao criar sessão" });
         }
-        res.json({ 
-          success: true, 
-          user: { ...user, passwordHash: undefined } 
+        
+        req.session.userId = user.id;
+        
+        req.session.save((err) => {
+          if (err) {
+            console.error("Error saving session:", err);
+            return res.status(500).json({ message: "Falha ao criar sessão" });
+          }
+          res.json({ 
+            success: true, 
+            user: { ...user, passwordHash: undefined } 
+          });
         });
       });
     } catch (error) {
