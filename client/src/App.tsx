@@ -32,6 +32,7 @@ import AdminCustomers from "@/pages/admin/customers";
 import AdminPaypal from "@/pages/admin/paypal";
 import AdminShipping from "@/pages/admin/shipping";
 import AuthPage from "@/pages/auth-page";
+import ForgotPassword from "@/pages/forgot-password";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -157,6 +158,9 @@ function Router() {
       )} />
       <Route path="/login" component={() => (
         <PublicLayout><AuthPage /></PublicLayout>
+      )} />
+      <Route path="/recuperar-senha" component={() => (
+        <PublicLayout><ForgotPassword /></PublicLayout>
       )} />
       <Route path="/inicio" component={() => (
         <ProtectedRoute><Home /></ProtectedRoute>

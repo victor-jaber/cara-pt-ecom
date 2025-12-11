@@ -13,13 +13,14 @@ import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ShoppingCart, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Truck, Tag } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 import { useLocationContext } from "@/contexts/LocationContext";
 import { useGuestCart, type GuestCartItem } from "@/contexts/GuestCartContext";
 
 export default function Cart() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedShippingId, setSelectedShippingId] = useState<string>("");
   const { isInternational } = useLocationContext();
   const { isAuthenticated } = useAuth();
@@ -388,17 +389,26 @@ export default function Cart() {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href={selectedShippingId ? `/checkout?shipping=${selectedShippingId}` : "/checkout"} className="w-full">
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  disabled={shippingOptions.length > 0 && !selectedShippingId}
-                  data-testid="button-checkout"
-                >
-                  Finalizar Compra
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+              <Button 
+                className="w-full" 
+                size="lg" 
+                disabled={shippingOptions.length > 0 && !selectedShippingId}
+                onClick={() => {
+                  if (shippingOptions.length > 0 && !selectedShippingId) {
+                    toast({
+                      title: "Selecione uma opção de envio",
+                      description: "Por favor escolha uma opção de envio para continuar.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setLocation(selectedShippingId ? `/checkout?shipping=${selectedShippingId}` : "/checkout");
+                }}
+                data-testid="button-checkout"
+              >
+                Finalizar Compra
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </CardFooter>
           </Card>
         </div>

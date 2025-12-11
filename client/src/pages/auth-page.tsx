@@ -81,6 +81,8 @@ export default function AuthPage() {
   useEffect(() => {
     if (tabParam === "register") {
       setIsLogin(false);
+    } else {
+      setIsLogin(true);
     }
   }, [tabParam]);
 

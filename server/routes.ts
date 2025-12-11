@@ -99,6 +99,12 @@ export async function registerRoutes(
         
         req.session.userId = user.id;
         
+        // Adjust session cookie duration based on "remember me" checkbox
+        // If rememberMe is true, keep the default 1 week; otherwise, set to session-only (browser close)
+        if (!validated.rememberMe && req.session.cookie) {
+          req.session.cookie.maxAge = undefined; // Session cookie expires when browser closes
+        }
+        
         req.session.save((err) => {
           if (err) {
             console.error("Error saving session:", err);
@@ -127,6 +133,37 @@ export async function registerRoutes(
       }
       res.json({ success: true });
     });
+  });
+
+  // Forgot password endpoint
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+
+      // Always return success to prevent email enumeration attacks
+      // In production, this would send an email if the user exists
+      console.log(`Password reset requested for: ${email}`);
+      
+      // TODO: Implement actual email sending with SMTP
+      // const user = await storage.getUserByEmail(email);
+      // if (user) {
+      //   const token = generateResetToken();
+      //   await storage.saveResetToken(user.id, token);
+      //   await sendResetEmail(user.email, token);
+      // }
+
+      res.json({ 
+        success: true, 
+        message: "Se existir uma conta com este email, receberá instruções para redefinir a sua palavra-passe." 
+      });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Falha ao processar pedido" });
+    }
   });
 
   // Get current user
