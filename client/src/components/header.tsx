@@ -264,13 +264,19 @@ export function Header() {
                   <span className="sr-only">Fechar</span>
                 </SheetClose>
                 <div className="relative">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                      <Sparkles className="w-6 h-6" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                        <Sparkles className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">CARA</h2>
+                        <p className="text-xs opacity-80">Preenchimento Premium</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold">CARA</h2>
-                      <p className="text-xs opacity-80">Preenchimento Premium</p>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur text-sm">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>{isPortugal ? "🇵🇹 PT" : "🌍 INT"}</span>
                     </div>
                   </div>
                   {isAuthenticated && user ? (
