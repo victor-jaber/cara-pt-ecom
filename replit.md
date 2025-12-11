@@ -60,6 +60,25 @@ Preferred communication style: Simple, everyday language.
 - **Nodemailer**: Email notifications for order confirmations and approvals
 - **OpenAI/Google AI**: AI integrations available in dependencies
 
+### Email Configuration (SMTP)
+Para ativar o envio de emails (recuperação de senha, confirmações de pedido, etc.), configure as seguintes variáveis de ambiente:
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `SMTP_HOST` | Servidor SMTP | `smtp.gmail.com` |
+| `SMTP_PORT` | Porta do servidor | `587` (TLS) ou `465` (SSL) |
+| `SMTP_USER` | Email de autenticação | `seuemail@gmail.com` |
+| `SMTP_PASS` | Senha ou App Password | `sua-senha-de-app` |
+| `SMTP_FROM` | Email remetente | `CARA <noreply@cara.pt>` |
+
+**Nota para Gmail**: Use uma "Senha de App" em vez da senha normal. Acesse Google Account > Segurança > Senhas de app para criar uma.
+
+**Provedores recomendados**:
+- Gmail (gratuito, limite de 500 emails/dia)
+- SendGrid (100 emails/dia grátis)
+- Mailgun (5.000 emails/mês grátis)
+- Amazon SES (62.000 emails/mês grátis com AWS)
+
 ### UI/UX Dependencies
 - **Radix UI**: Accessible component primitives (dialog, dropdown, toast, etc.)
 - **Lucide React**: Icon library
