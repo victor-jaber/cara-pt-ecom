@@ -22,9 +22,10 @@ interface LocationProviderProps {
 
 async function detectCountryByIP(): Promise<"portugal" | "international"> {
   try {
-    const response = await fetch("https://ip-api.com/json/?fields=countryCode");
+    // Using ipapi.co which supports HTTPS for free
+    const response = await fetch("https://ipapi.co/json/");
     const data = await response.json();
-    return data.countryCode === "PT" ? "portugal" : "international";
+    return data.country_code === "PT" ? "portugal" : "international";
   } catch (error) {
     console.warn("Could not detect location by IP, defaulting to international:", error);
     return "international";
