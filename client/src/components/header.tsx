@@ -94,8 +94,10 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between gap-2 md:gap-4 px-4">
         <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
-          <Link href="/" data-testid="link-home" className="flex-shrink-0">
+          <Link href="/" data-testid="link-home" className="flex items-center gap-3 flex-shrink-0">
             <img src="/logo.webp" alt="CARA" className="h-8 md:h-10" />
+            <span className="text-border h-6 border-l" />
+            <img src="/promipharm-logo.svg" alt="PROMIPHARM" className="h-8 md:h-10 dark:invert" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
