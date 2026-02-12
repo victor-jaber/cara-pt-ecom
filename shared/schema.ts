@@ -20,6 +20,8 @@ export const userRoleEnum = pgEnum("user_role", ["customer", "admin"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "shipped", "delivered", "cancelled"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "completed", "failed", "refunded"]);
 export const paypalModeEnum = pgEnum("paypal_mode", ["sandbox", "live"]);
+export const stripeModeEnum = pgEnum("stripe_mode", ["test", "live"]);
+export const eupagoModeEnum = pgEnum("eupago_mode", ["sandbox", "live"]);
 
 // Session storage table (mandatory for Replit Auth)
 export const sessions = pgTable(
@@ -111,6 +113,27 @@ export const paypalSettings = pgTable("paypal_settings", {
   clientId: varchar("client_id"),
   clientSecret: varchar("client_secret"),
   mode: paypalModeEnum("mode").default("sandbox").notNull(),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"),
+});
+
+// Stripe Settings table (singleton)
+export const stripeSettings = pgTable("stripe_settings", {
+  id: varchar("id").primaryKey().default("default"),
+  publishableKey: varchar("publishable_key"),
+  secretKey: varchar("secret_key"),
+  mode: stripeModeEnum("mode").default("test").notNull(),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"),
+});
+
+// EuPago Settings table (singleton)
+export const eupagoSettings = pgTable("eupago_settings", {
+  id: varchar("id").primaryKey().default("default"),
+  apiKey: varchar("api_key"),
+  mode: eupagoModeEnum("mode").default("sandbox").notNull(),
   isEnabled: boolean("is_enabled").default(false).notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by"),
@@ -242,6 +265,16 @@ export const insertPaypalSettingsSchema = createInsertSchema(paypalSettings).omi
   updatedAt: true,
 });
 
+export const insertStripeSettingsSchema = createInsertSchema(stripeSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertEupagoSettingsSchema = createInsertSchema(eupagoSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export const insertShippingOptionSchema = createInsertSchema(shippingOptions).omit({
   id: true,
   createdAt: true,
@@ -279,6 +312,12 @@ export type CartItemWithProduct = CartItem & {
 
 export type PaypalSettings = typeof paypalSettings.$inferSelect;
 export type InsertPaypalSettings = z.infer<typeof insertPaypalSettingsSchema>;
+
+export type StripeSettings = typeof stripeSettings.$inferSelect;
+export type InsertStripeSettings = z.infer<typeof insertStripeSettingsSchema>;
+
+export type EupagoSettings = typeof eupagoSettings.$inferSelect;
+export type InsertEupagoSettings = z.infer<typeof insertEupagoSettingsSchema>;
 
 export type ShippingOption = typeof shippingOptions.$inferSelect;
 export type InsertShippingOption = z.infer<typeof insertShippingOptionSchema>;

@@ -7,6 +7,7 @@ import {
 } from "@paypal/paypal-server-sdk";
 import { storage } from "./storage";
 import type { Request, Response } from "express";
+import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
 
 let cachedClient: Client | null = null;
 let cachedSettings: { clientId: string; mode: string } | null = null;
@@ -104,17 +105,11 @@ export async function createPaypalOrder(req: Request, res: Response) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const { shippingOptionId } = req.body || {};
+    const { shippingOptionId, countryCode, region } = req.body || {};
 
     const cartItems = await storage.getCartItems(user.id);
     if (cartItems.length === 0) {
       return res.status(400).json({ error: "Cart is empty" });
-    }
-
-    // Require shipping option when active options exist
-    const activeShippingOptions = await storage.getActiveShippingOptions();
-    if (activeShippingOptions.length > 0 && !shippingOptionId) {
-      return res.status(400).json({ error: "Shipping option is required" });
     }
 
     const cartSnapshot: PendingPayPalOrder["cartSnapshot"] = [];
@@ -140,15 +135,23 @@ export async function createPaypalOrder(req: Request, res: Response) {
       });
     }
 
-    let shippingCost = 0;
-    let shippingOptionName: string | undefined;
-    if (shippingOptionId) {
-      const shippingOption = await storage.getShippingOptionById(shippingOptionId);
-      if (shippingOption && shippingOption.isActive) {
-        shippingCost = parseFloat(shippingOption.price);
-        shippingOptionName = shippingOption.name;
-      }
+    const availableShippingOptions = getHardcodedShippingOptions({
+      countryCode,
+      region,
+      subtotal,
+    });
+
+    if (availableShippingOptions.length > 0 && !shippingOptionId) {
+      return res.status(400).json({ error: "Shipping option is required" });
     }
+
+    const selectedShipping = findShippingOptionOrNull(availableShippingOptions, shippingOptionId);
+    if (shippingOptionId && !selectedShipping) {
+      return res.status(400).json({ error: "Invalid shipping option for your location" });
+    }
+
+    const shippingCost = selectedShipping ? parseFloat(selectedShipping.price) : 0;
+    const shippingOptionName: string | undefined = selectedShipping ? selectedShipping.name : undefined;
 
     const total = subtotal + shippingCost;
 

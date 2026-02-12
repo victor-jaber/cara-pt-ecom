@@ -42,6 +42,8 @@ interface PayPalButtonProps {
   shippingAddress: string;
   notes?: string;
   shippingOptionId?: string;
+  countryCode?: string | null;
+  region?: string | null;
   onSuccess: (details: {
     paypalOrderId: string;
     paypalCaptureId: string;
@@ -57,6 +59,8 @@ export function PayPalButton({
   shippingAddress, 
   notes = "", 
   shippingOptionId,
+  countryCode,
+  region,
   onSuccess, 
   onError,
   disabled = false 
@@ -71,13 +75,17 @@ export function PayPalButton({
   const shippingAddressRef = useRef(shippingAddress);
   const notesRef = useRef(notes);
   const shippingOptionIdRef = useRef(shippingOptionId);
+  const countryCodeRef = useRef(countryCode);
+  const regionRef = useRef(region);
   
   useEffect(() => {
     cartRef.current = cart;
     shippingAddressRef.current = shippingAddress;
     notesRef.current = notes;
     shippingOptionIdRef.current = shippingOptionId;
-  }, [cart, shippingAddress, notes, shippingOptionId]);
+    countryCodeRef.current = countryCode;
+    regionRef.current = region;
+  }, [cart, shippingAddress, notes, shippingOptionId, countryCode, region]);
 
   const { data: setup, isLoading: setupLoading } = useQuery<PayPalSetup>({
     queryKey: ["/api/paypal/setup"],
@@ -122,6 +130,8 @@ export function PayPalButton({
         shippingAddress: shippingAddressRef.current,
         notes: notesRef.current,
         shippingOptionId: shippingOptionIdRef.current,
+        countryCode: countryCodeRef.current,
+        region: regionRef.current,
       }),
     });
     

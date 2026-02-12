@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
 import cors from "cors";
+import path from "path";
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,6 +31,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Serve uploaded assets (stored as URL strings in DB, e.g. /uploads/<file>)
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
 // Setup session BEFORE any routes
 setupAuth(app);

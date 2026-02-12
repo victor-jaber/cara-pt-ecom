@@ -6,6 +6,8 @@ import {
   orderItems,
   cartItems,
   paypalSettings,
+  stripeSettings,
+  eupagoSettings,
   shippingOptions,
   type User,
   type UpsertUser,
@@ -21,11 +23,15 @@ import {
   type CartItemWithProduct,
   type PaypalSettings,
   type InsertPaypalSettings,
+  type StripeSettings,
+  type InsertStripeSettings,
+  type EupagoSettings,
+  type InsertEupagoSettings,
   type ShippingOption,
   type InsertShippingOption,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -64,9 +70,20 @@ export interface IStorage {
   updateOrderStatus(id: string, status: "pending" | "confirmed" | "shipped" | "delivered" | "cancelled"): Promise<Order | undefined>;
   updateOrderPayment(id: string, data: Partial<Order>): Promise<Order | undefined>;
 
+  findOrderByEupagoReference(reference: string, entity?: string): Promise<Order | undefined>;
+  findOrderByEupagoTransactionId(transactionId: string): Promise<Order | undefined>;
+
   // PayPal settings operations
   getPaypalSettings(): Promise<PaypalSettings | undefined>;
   updatePaypalSettings(data: InsertPaypalSettings, updatedBy?: string): Promise<PaypalSettings>;
+
+  // Stripe settings operations
+  getStripeSettings(): Promise<StripeSettings | undefined>;
+  updateStripeSettings(data: InsertStripeSettings, updatedBy?: string): Promise<StripeSettings>;
+
+  // EuPago settings operations
+  getEupagoSettings(): Promise<EupagoSettings | undefined>;
+  updateEupagoSettings(data: InsertEupagoSettings, updatedBy?: string): Promise<EupagoSettings>;
 
   // Shipping options operations
   getAllShippingOptions(): Promise<ShippingOption[]>;
@@ -361,6 +378,34 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async findOrderByEupagoReference(reference: string, entity?: string): Promise<Order | undefined> {
+    const ref = reference.trim();
+    if (!ref) return undefined;
+
+    const whereParts: any[] = [sql`${orders.paymentMetadata} -> 'eupago' ->> 'reference' = ${ref}`];
+    const ent = (entity || "").trim();
+    if (ent) {
+      whereParts.push(sql`${orders.paymentMetadata} -> 'eupago' ->> 'entity' = ${ent}`);
+    }
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(...whereParts));
+    return order;
+  }
+
+  async findOrderByEupagoTransactionId(transactionId: string): Promise<Order | undefined> {
+    const trid = transactionId.trim();
+    if (!trid) return undefined;
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(sql`${orders.paymentMetadata} -> 'eupago' ->> 'transactionId' = ${trid}`);
+    return order;
+  }
+
   // PayPal settings operations
   async getPaypalSettings(): Promise<PaypalSettings | undefined> {
     const [settings] = await db.select().from(paypalSettings).where(eq(paypalSettings.id, "default"));
@@ -382,6 +427,72 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db
       .insert(paypalSettings)
       .values({ ...data, id: "default", updatedBy })
+      .returning();
+    return created;
+  }
+
+  async getStripeSettings(): Promise<StripeSettings | undefined> {
+    const [settings] = await db.select().from(stripeSettings).where(eq(stripeSettings.id, "default"));
+    return settings;
+  }
+
+  async updateStripeSettings(data: InsertStripeSettings, updatedBy?: string): Promise<StripeSettings> {
+    const [existing] = await db.select().from(stripeSettings).where(eq(stripeSettings.id, "default"));
+
+    if (existing) {
+      const [updated] = await db
+        .update(stripeSettings)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+          updatedBy: updatedBy || null,
+        })
+        .where(eq(stripeSettings.id, "default"))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(stripeSettings)
+      .values({
+        id: "default",
+        ...data,
+        updatedAt: new Date(),
+        updatedBy: updatedBy || null,
+      } as any)
+      .returning();
+    return created;
+  }
+
+  async getEupagoSettings(): Promise<EupagoSettings | undefined> {
+    const [settings] = await db.select().from(eupagoSettings).where(eq(eupagoSettings.id, "default"));
+    return settings;
+  }
+
+  async updateEupagoSettings(data: InsertEupagoSettings, updatedBy?: string): Promise<EupagoSettings> {
+    const [existing] = await db.select().from(eupagoSettings).where(eq(eupagoSettings.id, "default"));
+
+    if (existing) {
+      const [updated] = await db
+        .update(eupagoSettings)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+          updatedBy: updatedBy || null,
+        })
+        .where(eq(eupagoSettings.id, "default"))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(eupagoSettings)
+      .values({
+        id: "default",
+        ...data,
+        updatedAt: new Date(),
+        updatedBy: updatedBy || null,
+      } as any)
       .returning();
     return created;
   }

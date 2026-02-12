@@ -75,6 +75,9 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [promotionRules, setPromotionRules] = useState<PromotionRule[]>([]);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [removeImage, setRemoveImage] = useState(false);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -205,6 +208,8 @@ export default function AdminProducts() {
 
   const openEditDialog = (product: Product) => {
     setEditingProduct(product);
+    setImageFile(null);
+    setRemoveImage(false);
     const rules = product.promotionRules || [];
     setPromotionRules(rules);
     form.reset({
@@ -229,6 +234,8 @@ export default function AdminProducts() {
   const openCreateDialog = () => {
     setEditingProduct(null);
     setPromotionRules([]);
+    setImageFile(null);
+    setRemoveImage(false);
     form.reset({
       name: "",
       slug: "",
@@ -248,16 +255,44 @@ export default function AdminProducts() {
     setDialogOpen(true);
   };
 
-  const onSubmit = (data: ProductFormData) => {
-    const validRules = promotionRules.filter(rule => rule.pricePerUnit.trim() !== "");
-    const dataWithRules = {
-      ...data,
-      promotionRules: validRules.length > 0 ? validRules : undefined,
-    };
-    if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, data: dataWithRules });
-    } else {
-      createMutation.mutate(dataWithRules);
+  const onSubmit = async (data: ProductFormData) => {
+    try {
+      setIsUploadingImage(true);
+
+      let imageUrl = data.image?.trim() || "";
+
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append("image", imageFile);
+        const uploadRes = await apiRequest("POST", "/api/admin/uploads", formData);
+        const uploadData = (await uploadRes.json()) as { url?: string };
+        if (!uploadData.url) {
+          throw new Error("Falha no upload da imagem");
+        }
+        imageUrl = uploadData.url;
+        setRemoveImage(false);
+      }
+
+      const validRules = promotionRules.filter((rule) => rule.pricePerUnit.trim() !== "");
+      const dataWithRules = {
+        ...data,
+        image: removeImage ? null : imageUrl.trim() ? imageUrl.trim() : undefined,
+        promotionRules: validRules.length > 0 ? validRules : undefined,
+      };
+
+      if (editingProduct) {
+        updateMutation.mutate({ id: editingProduct.id, data: dataWithRules });
+      } else {
+        createMutation.mutate(dataWithRules);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error?.message || "Não foi possível fazer upload da imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -482,15 +517,57 @@ export default function AdminProducts() {
                   name="image"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL da Imagem</FormLabel>
+                      <FormLabel>Imagem (Upload)</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-product-image" />
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            setImageFile(e.target.files?.[0] || null);
+                            setRemoveImage(false);
+                          }}
+                          data-testid="input-product-image-file"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL da Imagem (opcional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ""} data-testid="input-product-image" />
+                    </FormControl>
+                    {(field.value || editingProduct?.image) && !removeImage && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {field.value || editingProduct?.image}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setImageFile(null);
+                            setRemoveImage(true);
+                            form.setValue("image", "", { shouldDirty: true, shouldTouch: true });
+                          }}
+                          disabled={isUploadingImage || createMutation.isPending || updateMutation.isPending}
+                          data-testid="button-remove-product-image"
+                        >
+                          Remover imagem
+                        </Button>
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -683,7 +760,7 @@ export default function AdminProducts() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={isUploadingImage || createMutation.isPending || updateMutation.isPending}
                   data-testid="button-save-product"
                 >
                   {editingProduct ? "Guardar Alterações" : "Criar Produto"}

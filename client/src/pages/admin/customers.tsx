@@ -148,7 +148,7 @@ export default function AdminCustomers() {
                             ? "secondary"
                             : "destructive"
                         }
-                        size="sm"
+                        className="text-xs"
                       >
                         {user.status === "approved" && "Aprovado"}
                         {user.status === "pending" && "Pendente"}

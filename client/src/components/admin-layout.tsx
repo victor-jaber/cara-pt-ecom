@@ -71,7 +71,7 @@ const adminNavItems = [
     icon: Users,
   },
   {
-    title: "PayPal",
+    title: "Métodos de Pagamento",
     href: "/admin/paypal",
     icon: CreditCard,
   },

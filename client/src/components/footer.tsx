@@ -59,30 +59,30 @@ export function Footer() {
             <h4 className="font-semibold">Produtos</h4>
             <nav className="flex flex-col gap-2">
               <Link 
-                href="/produto/cara-soft" 
+                href="/produtos" 
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={(e) => handleProductClick(e, "/produto/cara-soft")}
+                onClick={(e) => handleProductClick(e, "/produtos")}
               >
                 CARA SOFT
               </Link>
               <Link 
-                href="/produto/cara-mild" 
+                href="/produtos" 
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={(e) => handleProductClick(e, "/produto/cara-mild")}
+                onClick={(e) => handleProductClick(e, "/produtos")}
               >
                 CARA MILD
               </Link>
               <Link 
-                href="/produto/cara-hard" 
+                href="/produtos" 
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={(e) => handleProductClick(e, "/produto/cara-hard")}
+                onClick={(e) => handleProductClick(e, "/produtos")}
               >
                 CARA HARD
               </Link>
               <Link 
-                href="/produto/cara-ultra" 
+                href="/produtos" 
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={(e) => handleProductClick(e, "/produto/cara-ultra")}
+                onClick={(e) => handleProductClick(e, "/produtos")}
               >
                 CARA ULTRA
               </Link>

@@ -8,6 +8,8 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { hashPassword } from "./auth";
+import crypto from "crypto";
 
 const getOidcConfig = memoize(
   async () => {
@@ -52,12 +54,18 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
+  const randomPassword = crypto.randomBytes(32).toString("hex");
+  const passwordHash = await hashPassword(randomPassword);
+
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
+    passwordHash,
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    phone: "000000000",
+    profession: "Replit",
   });
 }
 

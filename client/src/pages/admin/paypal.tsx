@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -24,67 +24,168 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CreditCard, Eye, EyeOff, Loader2, Shield, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const paypalSettingsSchema = z.object({
-  clientId: z.string().min(1, "ID do Cliente é obrigatório"),
-  clientSecret: z.string().min(1, "Segredo do Cliente é obrigatório"),
-  mode: z.enum(["sandbox", "live"]),
-  enabled: z.boolean(),
-});
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { AlertCircle, CreditCard, Eye, EyeOff, Loader2, Shield } from "lucide-react";
 
-type PaypalSettingsForm = z.infer<typeof paypalSettingsSchema>;
+type AdminPaymentMethodsResponse = {
+  paypal: {
+    clientId: string;
+    clientSecret: string;
+    mode: "sandbox" | "live";
+    isEnabled: boolean;
+    hasSecret: boolean;
+  };
+  stripe: {
+    publishableKey: string;
+    secretKey: string;
+    mode: "test" | "live";
+    isEnabled: boolean;
+    hasSecret: boolean;
+  };
+  eupago: {
+    apiKey: string;
+    mode: "sandbox" | "live";
+    isEnabled: boolean;
+    hasSecret: boolean;
+  };
+};
 
-interface PaypalSettings {
-  clientId: string;
-  clientSecret: string;
-  mode: "sandbox" | "live";
-  isEnabled: boolean;
-  hasSecret: boolean;
-}
+const masked = "********";
+
+const paymentMethodsSchema = z
+  .object({
+    paypal: z.object({
+      enabled: z.boolean(),
+      mode: z.enum(["sandbox", "live"]),
+      clientId: z.string().optional().default(""),
+      clientSecret: z.string().optional().default(""),
+    }),
+    stripe: z.object({
+      enabled: z.boolean(),
+      mode: z.enum(["test", "live"]),
+      publishableKey: z.string().optional().default(""),
+      secretKey: z.string().optional().default(""),
+    }),
+    eupago: z.object({
+      enabled: z.boolean(),
+      mode: z.enum(["sandbox", "live"]),
+      apiKey: z.string().optional().default(""),
+    }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.paypal.enabled) {
+      if (!value.paypal.clientId?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["paypal", "clientId"], message: "Client ID obrigatório" });
+      }
+      if (!value.paypal.clientSecret?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["paypal", "clientSecret"], message: "Client Secret obrigatório" });
+      }
+    }
+
+    if (value.stripe.enabled) {
+      if (!value.stripe.publishableKey?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["stripe", "publishableKey"], message: "Publishable Key obrigatório" });
+      }
+      if (!value.stripe.secretKey?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["stripe", "secretKey"], message: "Secret Key obrigatório" });
+      }
+    }
+
+    if (value.eupago.enabled) {
+      if (!value.eupago.apiKey?.trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["eupago", "apiKey"], message: "API Key obrigatório" });
+      }
+    }
+
+    // Allow masked secrets to pass validation.
+    if (value.paypal.clientSecret === masked) {
+      // ok
+    }
+    if (value.stripe.secretKey === masked) {
+      // ok
+    }
+    if (value.eupago.apiKey === masked) {
+      // ok
+    }
+  });
+
+type PaymentMethodsForm = z.infer<typeof paymentMethodsSchema>;
 
 export default function AdminPaypal() {
   const { toast } = useToast();
-  const [showSecret, setShowSecret] = useState(false);
 
-  const { data: settings, isLoading } = useQuery<PaypalSettings>({
-    queryKey: ["/api/admin/paypal-settings"],
+  const [showPaypalSecret, setShowPaypalSecret] = useState(false);
+  const [showStripeSecret, setShowStripeSecret] = useState(false);
+  const [showEupagoKey, setShowEupagoKey] = useState(false);
+
+  const { data: settings, isLoading } = useQuery<AdminPaymentMethodsResponse>({
+    queryKey: ["/api/admin/payment-methods"],
   });
 
-  const form = useForm<PaypalSettingsForm>({
-    resolver: zodResolver(paypalSettingsSchema),
+  const form = useForm<PaymentMethodsForm>({
+    resolver: zodResolver(paymentMethodsSchema),
     defaultValues: {
-      clientId: "",
-      clientSecret: "",
-      mode: "sandbox",
-      enabled: false,
+      paypal: { enabled: false, mode: "sandbox", clientId: "", clientSecret: "" },
+      stripe: { enabled: false, mode: "test", publishableKey: "", secretKey: "" },
+      eupago: { enabled: false, mode: "sandbox", apiKey: "" },
     },
-    values: settings ? {
-      clientId: settings.clientId || "",
-      clientSecret: settings.hasSecret ? "********" : "",
-      mode: settings.mode || "sandbox",
-      enabled: settings.isEnabled || false,
-    } : undefined,
+    values: settings
+      ? {
+          paypal: {
+            enabled: settings.paypal.isEnabled,
+            mode: settings.paypal.mode,
+            clientId: settings.paypal.clientId || "",
+            clientSecret: settings.paypal.hasSecret ? masked : "",
+          },
+          stripe: {
+            enabled: settings.stripe.isEnabled,
+            mode: settings.stripe.mode,
+            publishableKey: settings.stripe.publishableKey || "",
+            secretKey: settings.stripe.hasSecret ? masked : "",
+          },
+          eupago: {
+            enabled: settings.eupago.isEnabled,
+            mode: settings.eupago.mode,
+            apiKey: settings.eupago.hasSecret ? masked : "",
+          },
+        }
+      : undefined,
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: PaypalSettingsForm) => {
-      const res = await apiRequest("POST", "/api/admin/paypal-settings", {
-        clientId: data.clientId,
-        clientSecret: data.clientSecret,
-        mode: data.mode,
-        isEnabled: data.enabled,
+    mutationFn: async (data: PaymentMethodsForm) => {
+      const res = await apiRequest("POST", "/api/admin/payment-methods", {
+        paypal: {
+          clientId: data.paypal.clientId,
+          clientSecret: data.paypal.clientSecret,
+          mode: data.paypal.mode,
+          isEnabled: data.paypal.enabled,
+        },
+        stripe: {
+          publishableKey: data.stripe.publishableKey,
+          secretKey: data.stripe.secretKey,
+          mode: data.stripe.mode,
+          isEnabled: data.stripe.enabled,
+        },
+        eupago: {
+          apiKey: data.eupago.apiKey,
+          mode: data.eupago.mode,
+          isEnabled: data.eupago.enabled,
+        },
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/paypal-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/payment-methods"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-methods/setup"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/paypal/setup"] });
       toast({
         title: "Configurações Guardadas",
-        description: "As configurações do PayPal foram atualizadas com sucesso.",
+        description: "Os métodos de pagamento foram atualizados com sucesso.",
       });
     },
     onError: (error: Error) => {
@@ -96,10 +197,6 @@ export default function AdminPaypal() {
     },
   });
 
-  const onSubmit = (data: PaypalSettingsForm) => {
-    updateMutation.mutate(data);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -108,202 +205,319 @@ export default function AdminPaypal() {
     );
   }
 
-  const isLiveMode = form.watch("mode") === "live";
-  const isEnabled = form.watch("enabled");
+  const paypalLive = form.watch("paypal.mode") === "live" && form.watch("paypal.enabled");
+  const stripeLive = form.watch("stripe.mode") === "live" && form.watch("stripe.enabled");
+  const eupagoLive = form.watch("eupago.mode") === "live" && form.watch("eupago.enabled");
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="text-paypal-title">
-          Configurações PayPal
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Métodos de Pagamento</h1>
         <p className="text-muted-foreground mt-1">
-          Configure a integração de pagamentos PayPal para a loja
+          Configure PayPal, Stripe e EuPago. Todos podem ficar ativos ao mesmo tempo.
         </p>
       </div>
 
-      {isLiveMode && isEnabled && (
+      {(paypalLive || stripeLive || eupagoLive) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Modo de Produção Ativo</AlertTitle>
           <AlertDescription>
-            O PayPal está configurado em modo LIVE. Os pagamentos serão processados com dinheiro real.
+            Pelo menos um gateway está em modo LIVE. Pagamentos reais podem ser processados.
           </AlertDescription>
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Credenciais API
-          </CardTitle>
-          <CardDescription>
-            Introduza as credenciais da sua conta PayPal Business. Pode encontrá-las no painel de desenvolvedor do PayPal.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="enabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Ativar PayPal</FormLabel>
-                      <FormDescription>
-                        Permitir pagamentos via PayPal no checkout
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-paypal-enabled"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-6">
+          <Tabs defaultValue="paypal" className="space-y-4">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="paypal">PayPal</TabsTrigger>
+              <TabsTrigger value="stripe">Stripe</TabsTrigger>
+              <TabsTrigger value="eupago">EuPago</TabsTrigger>
+            </TabsList>
 
-              <FormField
-                control={form.control}
-                name="mode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-paypal-mode">
-                          <SelectValue placeholder="Selecione o modo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="sandbox">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-blue-500" />
-                            Sandbox (Teste)
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="live">
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-green-500" />
-                            Live (Produção)
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Use Sandbox para testes e Live para pagamentos reais
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <TabsContent value="paypal">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    PayPal
+                  </CardTitle>
+                  <CardDescription>Pagamentos via PayPal.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="paypal.enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Ativar PayPal</FormLabel>
+                          <FormDescription>Permitir pagamentos via PayPal no checkout</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ID do Cliente (Client ID)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="AX..."
-                        data-testid="input-paypal-client-id"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      O Client ID da sua aplicação PayPal
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="paypal.mode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o modo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sandbox">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-blue-500" />
+                                Sandbox (Teste)
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="live">Live (Produção)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="clientSecret"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Segredo do Cliente (Client Secret)</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showSecret ? "text" : "password"}
-                          placeholder="EK..."
-                          className="pr-10"
-                          data-testid="input-paypal-client-secret"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowSecret(!showSecret)}
-                          data-testid="button-toggle-secret"
-                        >
-                          {showSecret ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      O Client Secret da sua aplicação PayPal
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="paypal.clientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client ID</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="AX..." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="flex items-center gap-4">
-                <Button
-                  type="submit"
-                  disabled={updateMutation.isPending}
-                  data-testid="button-save-paypal"
-                >
-                  {updateMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Guardar Configurações
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                  <FormField
+                    control={form.control}
+                    name="paypal.clientSecret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Secret</FormLabel>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type={showPaypalSecret ? "text" : "password"}
+                              placeholder="********"
+                            />
+                          </FormControl>
+                          <button
+                            type="button"
+                            onClick={() => setShowPaypalSecret((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            aria-label={showPaypalSecret ? "Ocultar" : "Mostrar"}
+                          >
+                            {showPaypalSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações de Configuração</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <div>
-            <p className="font-medium text-foreground">Como obter as credenciais:</p>
-            <ol className="list-decimal ml-4 mt-2 space-y-1">
-              <li>Aceda a developer.paypal.com</li>
-              <li>Faça login com a sua conta PayPal Business</li>
-              <li>Vá a My Apps & Credentials</li>
-              <li>Crie uma nova app ou selecione uma existente</li>
-              <li>Copie o Client ID e Client Secret</li>
-            </ol>
+            <TabsContent value="stripe">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stripe</CardTitle>
+                  <CardDescription>Pagamentos via Stripe (cartão) com Stripe Elements.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="stripe.enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Ativar Stripe</FormLabel>
+                          <FormDescription>Permitir pagamentos via Stripe no checkout</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="stripe.mode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o modo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="test">Teste</SelectItem>
+                            <SelectItem value="live">Live (Produção)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="stripe.publishableKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Publishable Key</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="pk_..." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="stripe.secretKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Secret Key</FormLabel>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type={showStripeSecret ? "text" : "password"}
+                              placeholder="sk_..."
+                            />
+                          </FormControl>
+                          <button
+                            type="button"
+                            onClick={() => setShowStripeSecret((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            aria-label={showStripeSecret ? "Ocultar" : "Mostrar"}
+                          >
+                            {showStripeSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="eupago">
+              <Card>
+                <CardHeader>
+                  <CardTitle>EuPago (Portugal)</CardTitle>
+                  <CardDescription>
+                    EuPago só aparece no checkout para clientes em Portugal (Multibanco e MBWay).
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="eupago.enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Ativar EuPago</FormLabel>
+                          <FormDescription>Permitir pagamentos via EuPago em Portugal</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="eupago.mode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o modo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sandbox">Sandbox (Teste)</SelectItem>
+                            <SelectItem value="live">Live (Produção)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="eupago.apiKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Key</FormLabel>
+                        <div className="relative">
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type={showEupagoKey ? "text" : "password"}
+                              placeholder="********"
+                            />
+                          </FormControl>
+                          <button
+                            type="button"
+                            onClick={() => setShowEupagoKey((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            aria-label={showEupagoKey ? "Ocultar" : "Mostrar"}
+                          >
+                            {showEupagoKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  A guardar...
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
           </div>
-          <div>
-            <p className="font-medium text-foreground">Modo Sandbox:</p>
-            <p>Use para testar pagamentos sem dinheiro real. Pode criar contas de teste no painel do PayPal.</p>
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Modo Live:</p>
-            <p>Use apenas quando estiver pronto para aceitar pagamentos reais. Certifique-se de que as credenciais são da conta Live.</p>
-          </div>
-        </CardContent>
-      </Card>
+        </form>
+      </Form>
     </div>
   );
 }
