@@ -1,74 +1,68 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Shield, 
-  Award, 
-  Beaker, 
+import {
+  Shield,
+  Award,
+  Beaker,
   Building2,
   CheckCircle2
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AboutPage() {
+  const { t } = useLanguage();
+
   const features = [
     {
       icon: Beaker,
-      title: "Tecnologia Avançada",
-      description:
-        "Desenvolvido com a mais avançada tecnologia de reticulação, garantindo máxima segurança e resultados naturais.",
+      title: t("about.features.technology.title"),
+      description: t("about.features.technology.description"),
     },
     {
       icon: Shield,
-      title: "Segurança Certificada",
-      description:
-        "Registado no INFARMED com certificação KGMP e ISO 13485, cumprindo os mais rigorosos padrões europeus.",
+      title: t("about.features.safety.title"),
+      description: t("about.features.safety.description"),
     },
     {
       icon: Award,
-      title: "Qualidade Premium",
-      description:
-        "Ácido hialurónico de elevada pureza (>99%), produzido em instalações de última geração na Coreia do Sul.",
+      title: t("about.features.quality.title"),
+      description: t("about.features.quality.description"),
     },
     {
       icon: Building2,
-      title: "Suporte Especializado",
-      description:
-        "Equipa de profissionais dedicados ao suporte técnico e formação contínua para profissionais de saúde.",
+      title: t("about.features.support.title"),
+      description: t("about.features.support.description"),
     },
   ];
 
   const certifications = [
-    "Registo INFARMED",
-    "Certificação CE",
-    "KGMP (Korean Good Manufacturing Practice)",
-    "ISO 13485:2016",
-    "ISO 22716:2007",
+    t("about.certifications.items.infarmed"),
+    t("about.certifications.items.ce"),
+    t("about.certifications.items.kgmp"),
+    t("about.certifications.items.iso13485"),
+    t("about.certifications.items.iso22716"),
   ];
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold tracking-tight" data-testid="text-about-title">
-          Sobre a CARA
+          {t("about.title")}
         </h1>
         <p className="text-xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-          Excelência em preenchimentos de ácido hialurónico para profissionais médicos em Portugal
+          {t("about.subtitle")}
         </p>
       </div>
 
       <div className="prose prose-lg dark:prose-invert max-w-none mb-12">
         <p>
-          A CARA representa uma nova era em preenchimentos dérmicos de ácido hialurónico, 
-          combinando a mais avançada tecnologia coreana com rigorosos padrões de qualidade europeus.
+          {t("about.intro1")}
         </p>
         <p>
-          Desenvolvida pelo laboratório GENOSS, líder mundial em biotecnologia, a linha CARA 
-          oferece uma gama completa de fillers monofásicos, cada um otimizado para aplicações 
-          específicas — desde o tratamento de rugas finas até volumização facial profunda.
+          {t("about.intro2")}
         </p>
         <p>
-          A nossa missão é fornecer aos profissionais de saúde portugueses produtos de qualidade 
-          excepcional, apoiados por um serviço personalizado e formação contínua, permitindo 
-          resultados estéticos naturais e duradouros para os seus pacientes.
+          {t("about.intro3")}
         </p>
       </div>
 
@@ -86,7 +80,7 @@ export default function AboutPage() {
 
       <Card>
         <CardContent className="p-8">
-          <h2 className="text-2xl font-bold mb-6 text-center">Certificações e Registos</h2>
+          <h2 className="text-2xl font-bold mb-6 text-center">{t("about.certifications.title")}</h2>
           <div className="flex flex-wrap justify-center gap-3">
             {certifications.map((cert) => (
               <Badge key={cert} variant="secondary" className="text-sm py-2 px-4">
@@ -99,28 +93,28 @@ export default function AboutPage() {
       </Card>
 
       <div className="mt-12 text-center">
-        <h2 className="text-2xl font-bold mb-4">A Nossa Gama</h2>
+        <h2 className="text-2xl font-bold mb-4">{t("about.range.title")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-left">
           {[
             {
-              name: "CARA SOFT",
-              desc: "Rugas finas e superficiais",
-              size: "100-200 μm",
+              name: t("about.range.soft.name"),
+              desc: t("about.range.soft.description"),
+              size: t("about.range.soft.size"),
             },
             {
-              name: "CARA MILD",
-              desc: "Correção moderada",
-              size: "200-300 μm",
+              name: t("about.range.mild.name"),
+              desc: t("about.range.mild.description"),
+              size: t("about.range.mild.size"),
             },
             {
-              name: "CARA HARD",
-              desc: "Rugas profundas e contorno",
-              size: "300-400 μm",
+              name: t("about.range.hard.name"),
+              desc: t("about.range.hard.description"),
+              size: t("about.range.hard.size"),
             },
             {
-              name: "CARA ULTRA",
-              desc: "Volumização e estrutura",
-              size: "400-500 μm",
+              name: t("about.range.ultra.name"),
+              desc: t("about.range.ultra.description"),
+              size: t("about.range.ultra.size"),
             },
           ].map((product) => (
             <Card key={product.name}>
@@ -128,7 +122,7 @@ export default function AboutPage() {
                 <h3 className="font-semibold">{product.name}</h3>
                 <p className="text-sm text-muted-foreground">{product.desc}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Partícula: {product.size}
+                  {t("about.range.particle")} {product.size}
                 </p>
               </CardContent>
             </Card>

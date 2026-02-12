@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { z } from "zod";
 import { useLocationContext } from "@/contexts/LocationContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,55 +31,29 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { saveAuthUser } from "@/lib/authPersistence";
 
-const registerSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
-  confirmPassword: z.string(),
-  firstName: z.string().min(1, "Nome é obrigatório"),
-  lastName: z.string().min(1, "Sobrenome é obrigatório"),
-  phone: z.string().min(9, "Número de telemóvel inválido"),
-  profession: z.string().min(1, "Selecione a sua profissão"),
-  additionalInfo: z.string().optional(),
-  acceptTerms: z.boolean(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "As palavras-passe não coincidem",
-  path: ["confirmPassword"],
-}).refine((data) => data.acceptTerms === true, {
-  message: "Deve aceitar as políticas de privacidade",
-  path: ["acceptTerms"],
-});
-
-const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "Palavra-passe é obrigatória"),
-  rememberMe: z.boolean().optional(),
-});
-
-type RegisterInput = z.infer<typeof registerSchema>;
-type LoginInput = z.infer<typeof loginSchema>;
-
-const professions = [
-  "Médico(a)",
-  "Médico(a) Dermatologista",
-  "Médico(a) Estético",
-  "Médico(a) Cirurgião Plástico",
-  "Enfermeiro(a)",
-  "Farmacêutico(a)",
-  "Clínica Estética",
-  "Distribuidor",
-  "Outro",
+const professionKeys = [
+  "doctor",
+  "derm",
+  "aesthetic",
+  "plastic",
+  "nurse",
+  "pharma",
+  "clinic",
+  "distributor",
+  "other",
 ];
 
 export default function AuthPage() {
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
   const tabParam = urlParams.get("tab");
-  
+
   const [isLogin, setIsLogin] = useState(tabParam !== "register");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { location: userLocation, isInternational } = useLocationContext();
-  
+  const { t } = useLanguage();
+
   useEffect(() => {
     if (tabParam === "register") {
       setIsLogin(false);
@@ -90,6 +65,33 @@ export default function AuthPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const registerSchema = useMemo(() => z.object({
+    email: z.string().email(t("auth.validation.invalidEmail")),
+    password: z.string().min(6, t("auth.validation.passwordMin")),
+    confirmPassword: z.string(),
+    firstName: z.string().min(1, t("auth.validation.requiredField")),
+    lastName: z.string().min(1, t("auth.validation.requiredField")),
+    phone: z.string().min(9, t("auth.validation.invalidPhone")),
+    profession: z.string().min(1, t("auth.validation.requiredField")),
+    additionalInfo: z.string().optional(),
+    acceptTerms: z.boolean(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: t("auth.validation.passwordMatch"),
+    path: ["confirmPassword"],
+  }).refine((data) => data.acceptTerms === true, {
+    message: t("auth.validation.acceptTerms"),
+    path: ["acceptTerms"],
+  }), [t]);
+
+  const loginSchema = useMemo(() => z.object({
+    email: z.string().email(t("auth.validation.invalidEmail")),
+    password: z.string().min(1, t("auth.validation.requiredField")),
+    rememberMe: z.boolean().optional(),
+  }), [t]);
+
+  type RegisterInput = z.infer<typeof registerSchema>;
+  type LoginInput = z.infer<typeof loginSchema>;
 
   const registerForm = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -125,26 +127,24 @@ export default function AuthPage() {
       return res.json();
     },
     onSuccess: (data: { success: boolean; user: any }) => {
-      // Set user data directly in cache from response
       queryClient.setQueryData(["/api/auth/user"], data.user);
-      // Persist to localStorage for session recovery (especially for international users)
       saveAuthUser(data.user);
       if (isInternational) {
         toast({
-          title: "Registo efetuado com sucesso",
-          description: "A sua conta foi ativada. Pode começar a comprar.",
+          title: t("auth.register.successTitle"),
+          description: t("auth.register.successDescApp"),
         });
       } else {
         toast({
-          title: "Registo efetuado com sucesso",
-          description: "A sua conta está pendente de aprovação.",
+          title: t("auth.register.successTitle"),
+          description: t("auth.register.successDescPend"),
         });
       }
       setLocation("/");
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro no registo",
+        title: t("auth.register.errorTitle"),
         description: error.message,
         variant: "destructive",
       });
@@ -157,15 +157,13 @@ export default function AuthPage() {
       return res.json();
     },
     onSuccess: (data: { success: boolean; user: any }) => {
-      // Set user data directly in cache from response
       queryClient.setQueryData(["/api/auth/user"], data.user);
-      // Persist to localStorage for session recovery (especially for international users)
       saveAuthUser(data.user);
       setLocation("/");
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro no login",
+        title: t("auth.login.errorTitle"),
         description: error.message,
         variant: "destructive",
       });
@@ -187,7 +185,7 @@ export default function AuthPage() {
           {!isLogin && (
             <Card className="flex-1 max-w-lg">
               <CardHeader>
-                <CardTitle className="text-2xl text-primary">Regista-te</CardTitle>
+                <CardTitle className="text-2xl text-primary">{t("auth.register.title")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...registerForm}>
@@ -197,7 +195,7 @@ export default function AuthPage() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nome <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.firstNameLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-firstname" />
                           </FormControl>
@@ -211,7 +209,7 @@ export default function AuthPage() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Sobrenome <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.lastNameLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-lastname" />
                           </FormControl>
@@ -225,11 +223,11 @@ export default function AuthPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>E-mail <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.emailLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="E-mail" {...field} data-testid="input-email-register" />
+                            <Input type="email" placeholder={t("auth.register.emailPlaceholder")} {...field} data-testid="input-email-register" />
                           </FormControl>
-                          <FormDescription>E-mail</FormDescription>
+                          <FormDescription>{t("auth.register.emailLabel")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -240,9 +238,9 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Palavra-passe <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.passwordLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="Escolha a sua palavra-passe" {...field} data-testid="input-password-register" />
+                            <Input type="password" placeholder={t("auth.register.passwordPlaceholder")} {...field} data-testid="input-password-register" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -254,9 +252,9 @@ export default function AuthPage() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirme a palavra-passe <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.confirmPasswordLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="Confirme a sua nova palavra-passe." {...field} data-testid="input-confirm-password" />
+                            <Input type="password" placeholder={t("auth.register.confirmPasswordPlaceholder")} {...field} data-testid="input-confirm-password" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -268,11 +266,11 @@ export default function AuthPage() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Telemóvel <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.register.phoneLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input placeholder="E.x. +351 300 400 500" {...field} data-testid="input-phone" />
+                            <Input placeholder={t("auth.register.phonePlaceholder")} {...field} data-testid="input-phone" />
                           </FormControl>
-                          <FormDescription>Insira aqui o seu número de telemóvel</FormDescription>
+                          <FormDescription>{t("auth.register.phoneDescription")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -283,22 +281,22 @@ export default function AuthPage() {
                       name="profession"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Selecionar</FormLabel>
+                          <FormLabel>{t("auth.register.professionLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-profession">
-                                <SelectValue placeholder="Profissão" />
+                                <SelectValue placeholder={t("auth.register.professionPlaceholder")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {professions.map((profession) => (
-                                <SelectItem key={profession} value={profession}>
-                                  {profession}
+                              {professionKeys.map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {t(`auth.professions.${key}`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormDescription>Selecione a sua profissão</FormDescription>
+                          <FormDescription>{t("auth.register.professionDescription")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -309,11 +307,11 @@ export default function AuthPage() {
                       name="additionalInfo"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Informações adicionais</FormLabel>
+                          <FormLabel>{t("auth.register.additionalInfoLabel")}</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Escreva aqui as suas informações adicionais." 
-                              {...field} 
+                            <Textarea
+                              placeholder={t("auth.register.additionalInfoPlaceholder")}
+                              {...field}
                               data-testid="input-additional-info"
                             />
                           </FormControl>
@@ -336,14 +334,13 @@ export default function AuthPage() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel className="text-sm font-normal">
-                              Políticas de privacidade e cookies<br />
-                              Li e aceito as{" "}
+                              {t("auth.register.termsLabel")}{" "}
                               <a href="/politica-privacidade" className="text-primary underline">
-                                políticas de privacidade
+                                {t("auth.register.privacyLink")}
                               </a>{" "}
-                              e{" "}
+                              {t("auth.register.and")}{" "}
                               <a href="/termos" className="text-primary underline">
-                                termos e condições
+                                {t("auth.register.termsLink")}
                               </a>
                               .
                             </FormLabel>
@@ -353,24 +350,24 @@ export default function AuthPage() {
                       )}
                     />
 
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full"
                       disabled={registerMutation.isPending}
                       data-testid="button-register-submit"
                     >
-                      {registerMutation.isPending ? "A registar..." : "Regista-te"}
+                      {registerMutation.isPending ? t("auth.register.submittingButton") : t("auth.register.submitButton")}
                     </Button>
 
                     <p className="text-center text-sm text-muted-foreground">
-                      Já tem uma conta?{" "}
+                      {t("auth.register.loginLinkText")}{" "}
                       <button
                         type="button"
                         onClick={() => setIsLogin(true)}
                         className="text-primary underline"
                         data-testid="link-to-login"
                       >
-                        Faça login
+                        {t("auth.register.loginLink")}
                       </button>
                     </p>
                   </form>
@@ -382,7 +379,7 @@ export default function AuthPage() {
           {isLogin && (
             <Card className="flex-1 max-w-md">
               <CardHeader>
-                <CardTitle className="text-2xl text-primary">Faça Login</CardTitle>
+                <CardTitle className="text-2xl text-primary">{t("auth.login.title")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...loginForm}>
@@ -392,9 +389,9 @@ export default function AuthPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>E-mail <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.login.emailLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="insira o seu e-mail" {...field} data-testid="input-email-login" />
+                            <Input type="email" placeholder={t("auth.login.emailPlaceholder")} {...field} data-testid="input-email-login" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -406,13 +403,13 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Palavra-Passe <span className="text-destructive">*</span></FormLabel>
+                          <FormLabel>{t("auth.login.passwordLabel")} <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="Insira a sua palavra-passe" {...field} data-testid="input-password-login" />
+                            <Input type="password" placeholder={t("auth.login.passwordPlaceholder")} {...field} data-testid="input-password-login" />
                           </FormControl>
                           <div className="text-right">
                             <a href="/recuperar-senha" className="text-sm text-primary underline">
-                              Perdeu a sua palavra passe?
+                              {t("auth.login.forgotPassword")}
                             </a>
                           </div>
                           <FormMessage />
@@ -433,30 +430,30 @@ export default function AuthPage() {
                             />
                           </FormControl>
                           <FormLabel className="text-sm font-normal">
-                            Lembre-se de mim
+                            {t("auth.login.rememberMe")}
                           </FormLabel>
                         </FormItem>
                       )}
                     />
 
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full"
                       disabled={loginMutation.isPending}
                       data-testid="button-login-submit"
                     >
-                      {loginMutation.isPending ? "A entrar..." : "Login"}
+                      {loginMutation.isPending ? t("auth.login.submittingButton") : t("auth.login.submitButton")}
                     </Button>
 
                     <p className="text-center text-sm text-muted-foreground">
-                      Não tem uma conta?{" "}
+                      {t("auth.login.registerLinkText")}{" "}
                       <button
                         type="button"
                         onClick={() => setIsLogin(false)}
                         className="text-primary underline"
                         data-testid="link-to-register"
                       >
-                        Registe-se
+                        {t("auth.login.registerLink")}
                       </button>
                     </p>
                   </form>

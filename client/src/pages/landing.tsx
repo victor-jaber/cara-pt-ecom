@@ -2,12 +2,12 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Shield, 
-  Sparkles, 
-  Award, 
-  FlaskConical, 
-  Syringe, 
+import {
+  Shield,
+  Sparkles,
+  Award,
+  FlaskConical,
+  Syringe,
   CheckCircle2,
   ArrowRight,
   Star,
@@ -31,164 +31,13 @@ import {
 import { motion, useInView } from "framer-motion";
 import { SiWhatsapp } from "react-icons/si";
 import { useRef, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const WHATSAPP_NUMBER = "351910060560";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Gostaria de solicitar acesso profissional à loja CARA.")}`;
 const WHATSAPP_SUPPORT_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Preciso de ajuda com a loja CARA.")}`;
 
-const products = [
-  { 
-    name: "SOFT", 
-    slug: "cara-soft", 
-    description: "Rugas finas, olheiras, linhas periorais", 
-    particle: "200 μm",
-    depth: "Superficial",
-    needle: "30G TW",
-    zones: ["Rugas periorbitais", "Olheiras", "Linhas periorais", "Mesoterapia facial"]
-  },
-  { 
-    name: "MILD", 
-    slug: "cara-mild", 
-    description: "Rugas médias, glabela, contorno labial", 
-    particle: "400 μm",
-    depth: "Superficial a Média",
-    needle: "27G TW",
-    zones: ["Rugas nasolabiais", "Linhas de marioneta", "Contorno labial", "Glabela"]
-  },
-  { 
-    name: "HARD", 
-    slug: "cara-hard", 
-    description: "Sulcos profundos, volumetria facial", 
-    particle: "600 μm",
-    depth: "Média a Profunda",
-    needle: "25G/27G TW",
-    zones: ["Sulcos profundos", "Volumetria malar", "Preenchimento zigomático", "Contorno facial"]
-  },
-  { 
-    name: "ULTRA", 
-    slug: "cara-ultra", 
-    description: "Rinomodelação, mandíbula, contorno", 
-    particle: "900 μm",
-    depth: "Profunda",
-    needle: "25G/27G TW",
-    zones: ["Rinomodelação", "Mandíbula", "Mento", "Volumetria facial"]
-  },
-];
 
-const features = [
-  {
-    icon: Shield,
-    title: "Seguro para Pacientes",
-    description: "Baixo nível de endotoxina e resíduo BDDE indetectável, minimizando riscos de reações adversas.",
-    stat: "< 0.5 EU/ml"
-  },
-  {
-    icon: Sparkles,
-    title: "Alta Pureza",
-    description: "Rigoroso controle de qualidade em todo o processo de produção, do material base ao produto final.",
-    stat: "99.8%"
-  },
-  {
-    icon: FlaskConical,
-    title: "Tecnologia Hy-Brid",
-    description: "Partículas de tamanho uniforme que mantêm volume duradouro e promovem produção de colagénio.",
-    stat: "Patenteado"
-  },
-  {
-    icon: Syringe,
-    title: "Design Ergonómico",
-    description: "Haste e punho projetados para distribuição uniforme de pressão durante a injeção.",
-    stat: "Conforto+"
-  },
-  {
-    icon: Award,
-    title: "Certificações Globais",
-    description: "KGMP, ISO 13485, ISO 9001, registo no INFARMED e distribuição pela PROMIPHARM.",
-    stat: "5 Certificações"
-  },
-  {
-    icon: Heart,
-    title: "Cruelty Free",
-    description: "Produção não animal, livre de testes em animais, comprometida com práticas éticas.",
-    stat: "100%"
-  },
-];
-
-const stats = [
-  { value: "18+", label: "Anos de Experiência", icon: Clock },
-  { value: "50+", label: "Países", icon: Globe },
-  { value: "10M+", label: "Tratamentos", icon: Users },
-  { value: "99%", label: "Satisfação", icon: Star },
-];
-
-const certifications = [
-  { name: "INFARMED", description: "Registado em Portugal" },
-  { name: "CE Mark", description: "Conformidade Europeia" },
-  { name: "ISO 13485", description: "Dispositivos Médicos" },
-  { name: "KGMP", description: "Boas Práticas de Fabrico" },
-  { name: "ISO 9001", description: "Gestão de Qualidade" },
-];
-
-const processSteps = [
-  { 
-    step: 1, 
-    title: "Registo Profissional", 
-    description: "Crie a sua conta e submeta as credenciais médicas para verificação.",
-    icon: FileCheck
-  },
-  { 
-    step: 2, 
-    title: "Aprovação Rápida", 
-    description: "A nossa equipa analisa e aprova o seu acesso em até 24 horas úteis.",
-    icon: Clock
-  },
-  { 
-    step: 3, 
-    title: "Acesso Completo", 
-    description: "Explore o catálogo, preços exclusivos e faça as suas encomendas.",
-    icon: Zap
-  },
-];
-
-const testimonials = [
-  {
-    name: "Dra. Ana Santos",
-    role: "Medicina Estética, Lisboa",
-    quote: "A qualidade dos produtos CARA é incomparável. Os meus pacientes notam a diferença nos resultados.",
-    rating: 5
-  },
-  {
-    name: "Dr. Miguel Ferreira",
-    role: "Dermatologista, Porto",
-    quote: "A tecnologia Hy-Brid proporciona resultados naturais e duradouros. Recomendo a todos os colegas.",
-    rating: 5
-  },
-  {
-    name: "Dra. Sofia Martins",
-    role: "Cirurgia Plástica, Braga",
-    quote: "O suporte técnico da CARA é excelente. Sempre disponíveis para esclarecer dúvidas.",
-    rating: 5
-  },
-];
-
-const faqs = [
-  {
-    question: "Quem pode comprar produtos CARA?",
-    answer: "Apenas profissionais médicos qualificados e verificados podem adquirir os nossos produtos. Isto inclui médicos com especialização em dermatologia, cirurgia plástica, medicina estética e áreas relacionadas."
-  },
-  {
-    question: "Quanto tempo demora a aprovação?",
-    answer: "O processo de verificação profissional é normalmente concluído em 24 horas úteis após a submissão de todos os documentos necessários."
-  },
-  {
-    question: "Os produtos têm registo no INFARMED?",
-    answer: "Sim, todos os produtos CARA estão devidamente registados no INFARMED e cumprem com todas as regulamentações europeias para dispositivos médicos."
-  },
-  {
-    question: "Qual é o prazo de entrega?",
-    answer: "Entregas em Portugal Continental são realizadas em 24-48 horas úteis. Ilhas e outros destinos podem ter prazos diferentes."
-  },
-];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -199,7 +48,7 @@ const fadeInUp = {
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
-  
+
   return (
     <div
       ref={ref}
@@ -211,26 +60,26 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
-function TableRow({ 
-  label, 
-  standard, 
-  result, 
-  isHighlight = false, 
+function TableRow({
+  label,
+  standard,
+  result,
+  isHighlight = false,
   isSuccess = false,
-  delay = 0 
-}: { 
-  label: string; 
-  standard: string; 
-  result: string; 
+  delay = 0
+}: {
+  label: string;
+  standard: string;
+  result: string;
   isHighlight?: boolean;
   isSuccess?: boolean;
   delay?: number;
 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
-  
+
   return (
-    <tr 
+    <tr
       ref={ref}
       className={`transition-all duration-500 ${isInView ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'} ${isHighlight ? 'bg-primary/5' : ''}`}
       style={{ transitionDelay: `${delay * 1000}ms` }}
@@ -248,17 +97,17 @@ function TableRow({
   );
 }
 
-function SafetyStatCard({ 
-  icon: Icon, 
-  value, 
-  label, 
-  description, 
+function SafetyStatCard({
+  icon: Icon,
+  value,
+  label,
+  description,
   isHighlight = false,
-  delay = 0 
-}: { 
-  icon: typeof Shield; 
-  value: string; 
-  label: string; 
+  delay = 0
+}: {
+  icon: typeof Shield;
+  value: string;
+  label: string;
   description: string;
   isHighlight?: boolean;
   delay?: number;
@@ -282,15 +131,25 @@ function SafetyStatCard({
   );
 }
 
-function ProductCard({ product, index }: { product: typeof products[0]; index: number }) {
+interface Product {
+  name: string;
+  slug: string;
+  description: string;
+  particle: string;
+  depth: string;
+  needle: string;
+  zones: string[];
+}
+
+function ProductCard({ product, index }: { product: Product; index: number }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-30px" });
-  
+
   return (
     <div
       ref={ref}
       className={`transition-all duration-400 ease-out ${isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-      style={{ 
+      style={{
         transitionDelay: `${index * 50}ms`,
         willChange: 'opacity, transform'
       }}
@@ -303,19 +162,19 @@ function ProductCard({ product, index }: { product: typeof products[0]; index: n
                 <span className="text-primary-foreground font-bold text-sm">CARA</span>
               </div>
             </div>
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-xs"
             >
               {product.particle}
             </Badge>
           </div>
-          
+
           <div className="text-center pt-4">
             <h3 className="text-xl font-bold text-primary">CARA {product.name}</h3>
             <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
           </div>
-          
+
           <div className="space-y-2 pt-2 overflow-hidden max-h-0 group-hover:max-h-40 transition-all duration-300 ease-out opacity-0 group-hover:opacity-100">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Profundidade:</span>
@@ -345,7 +204,7 @@ function ProductCard({ product, index }: { product: typeof products[0]; index: n
 function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
-  
+
   return (
     <span ref={ref} className="tabular-nums">
       {isInView ? value : "0"}{suffix}
@@ -354,8 +213,163 @@ function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
 }
 
 export default function Landing() {
+  const { t } = useLanguage();
   const [activeProduct, setActiveProduct] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const products: Product[] = [
+    {
+      name: "SOFT",
+      slug: "cara-soft",
+      description: t("products.soft.description"),
+      particle: "200 μm",
+      depth: t("products.soft.depth"),
+      needle: "30G TW",
+      zones: [t("products.soft.zones.0"), t("products.soft.zones.1"), t("products.soft.zones.2"), t("products.soft.zones.3")]
+    },
+    {
+      name: "MILD",
+      slug: "cara-mild",
+      description: t("products.mild.description"),
+      particle: "400 μm",
+      depth: t("products.mild.depth"),
+      needle: "27G TW",
+      zones: [t("products.mild.zones.0"), t("products.mild.zones.1"), t("products.mild.zones.2"), t("products.mild.zones.3")]
+    },
+    {
+      name: "HARD",
+      slug: "cara-hard",
+      description: t("products.hard.description"),
+      particle: "600 μm",
+      depth: t("products.hard.depth"),
+      needle: "25G/27G TW",
+      zones: [t("products.hard.zones.0"), t("products.hard.zones.1"), t("products.hard.zones.2"), t("products.hard.zones.3")]
+    },
+    {
+      name: "ULTRA",
+      slug: "cara-ultra",
+      description: t("products.ultra.description"),
+      particle: "900 μm",
+      depth: t("products.ultra.depth"),
+      needle: "25G/27G TW",
+      zones: [t("products.ultra.zones.0"), t("products.ultra.zones.1"), t("products.ultra.zones.2"), t("products.ultra.zones.3")]
+    },
+  ];
+
+  const features = [
+    {
+      icon: Shield,
+      title: t("features.safe.title"),
+      description: t("features.safe.description"),
+      stat: "< 0.5 EU/ml"
+    },
+    {
+      icon: Sparkles,
+      title: t("features.purity.title"),
+      description: t("features.purity.description"),
+      stat: "99.8%"
+    },
+    {
+      icon: FlaskConical,
+      title: t("features.tech.title"),
+      description: t("features.tech.description"),
+      stat: t("features.tech.stat")
+    },
+    {
+      icon: Syringe,
+      title: t("features.ergonomic.title"),
+      description: t("features.ergonomic.description"),
+      stat: t("features.ergonomic.stat")
+    },
+    {
+      icon: Award,
+      title: t("features.cert.title"),
+      description: t("features.cert.description"),
+      stat: t("features.cert.stat")
+    },
+    {
+      icon: Heart,
+      title: t("features.cruelty.title"),
+      description: t("features.cruelty.description"),
+      stat: "100%"
+    },
+  ];
+
+  const stats = [
+    { value: "18+", label: t("stats.experience"), icon: Clock },
+    { value: "50+", label: t("stats.countries"), icon: Globe },
+    { value: "10M+", label: t("stats.treatments"), icon: Users },
+    { value: "99%", label: t("stats.satisfaction"), icon: Star },
+  ];
+
+  const certifications = [
+    { name: "INFARMED", description: t("certifications.infarmed") },
+    { name: "CE Mark", description: t("certifications.ce") },
+    { name: "ISO 13485", description: t("certifications.iso13485") },
+    { name: "KGMP", description: t("certifications.kgmp") },
+    { name: "ISO 9001", description: t("certifications.iso9001") },
+  ];
+
+  const processSteps = [
+    {
+      step: 1,
+      title: t("process.step1.title"),
+      description: t("process.step1.description"),
+      icon: FileCheck
+    },
+    {
+      step: 2,
+      title: t("process.step2.title"),
+      description: t("process.step2.description"),
+      icon: Clock
+    },
+    {
+      step: 3,
+      title: t("process.step3.title"),
+      description: t("process.step3.description"),
+      icon: Zap
+    },
+  ];
+
+  const testimonials = [
+    {
+      name: "Dra. Ana Santos",
+      role: t("testimonials.1.role"),
+      quote: t("testimonials.1.quote"),
+      rating: 5
+    },
+    {
+      name: "Dr. Miguel Ferreira",
+      role: t("testimonials.2.role"),
+      quote: t("testimonials.2.quote"),
+      rating: 5
+    },
+    {
+      name: "Dra. Sofia Martins",
+      role: t("testimonials.3.role"),
+      quote: t("testimonials.3.quote"),
+      rating: 5
+    },
+  ];
+
+  const faqs = [
+    {
+      question: t("faq.1.question"),
+      answer: t("faq.1.answer")
+    },
+    {
+      question: t("faq.2.question"),
+      answer: t("faq.2.answer")
+    },
+    {
+      question: t("faq.3.question"),
+      answer: t("faq.3.answer")
+    },
+    {
+      question: t("faq.4.question"),
+      answer: t("faq.4.answer")
+    },
+  ];
 
   return (
     <div className="flex flex-col">
@@ -364,65 +378,64 @@ export default function Landing() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/15 via-transparent to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-        
+
         <div className="absolute top-1/4 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto px-4 py-20 relative z-10">
           <div className="max-w-5xl mx-auto text-center space-y-8">
             <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
               <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm">
                 <Sparkles className="w-4 h-4 mr-2 text-primary" />
-                Distribuidor Oficial em Portugal
+                {t("hero.distributor")}
               </Badge>
             </div>
-            
-            <h1 
+
+            <h1
               className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-tight animate-fade-in-up"
               style={{ animationDelay: '100ms' }}
             >
-              A <span className="text-primary">CARA</span> perfeita
+              {t("hero.title_part1")} <span className="text-primary">CARA</span> {t("hero.title_part2")}
               <br />
               <span className="text-4xl md:text-5xl lg:text-6xl font-medium text-muted-foreground">
-                para cada tratamento
+                {t("hero.title_part3")}
               </span>
             </h1>
-            
-            <p 
+
+            <p
               className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in-up"
               style={{ animationDelay: '200ms' }}
             >
-              Ácido Hialurónico reticulado premium com <strong className="text-foreground">Lidocaína 3%</strong>, 
-              desenvolvido para profissionais médicos que exigem excelência em cada procedimento.
+              {t("hero.subtitle")}
             </p>
-            
-            <div 
+
+            <div
               className="flex flex-col sm:flex-row gap-4 justify-center pt-4 animate-fade-in-up"
               style={{ animationDelay: '300ms' }}
             >
               <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="gap-2 text-lg px-8 py-6" data-testid="button-hero-register">
                   <SiWhatsapp className="w-5 h-5" />
-                  Solicitar Acesso Profissional
+                  {t("hero.cta_whatsapp")}
                 </Button>
               </a>
               <Link href="/sobre">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6" data-testid="button-hero-about">
                   <Play className="w-5 h-5 mr-2" />
-                  Conhecer a CARA
+                  {t("hero.cta_about")}
                 </Button>
               </Link>
             </div>
 
-            <div 
+            <div
               className="flex flex-wrap justify-center gap-8 pt-12 text-sm animate-fade-in"
               style={{ animationDelay: '400ms' }}
             >
               {[
-                { icon: CheckCircle2, text: "Registado no INFARMED" },
-                { icon: Award, text: "ISO 13485 Certificado" },
-                { icon: Heart, text: "Cruelty Free" },
-                { icon: Zap, text: "Entrega 24-48h" },
+                { icon: CheckCircle2, text: t("hero.badges.infarmed") },
+                { icon: Award, text: t("hero.badges.iso13485") },
+                { icon: Heart, text: t("hero.badges.cruelty_free") },
+                { icon: Zap, text: t("hero.badges.delivery") },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-2 text-muted-foreground">
                   <item.icon className="w-5 h-5 text-primary" />
@@ -432,7 +445,7 @@ export default function Landing() {
             </div>
           </div>
         </div>
-        
+
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce-slow">
           <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center pt-2">
             <div className="w-1.5 h-3 bg-primary rounded-full" />
@@ -489,14 +502,13 @@ export default function Landing() {
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <FlaskConical className="w-3 h-3 mr-1" />
-              Portfólio Completo
+              {t("portfolio.badge")}
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Escolha a <span className="text-primary">CARA</span> Certa
+              {t("portfolio.title_part1")} <span className="text-primary">CARA</span> {t("portfolio.title_part2")}
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Quatro formulações desenvolvidas para diferentes necessidades de tratamento, 
-              cada uma com especificações técnicas precisas para resultados excepcionais.
+              {t("portfolio.description")}
             </p>
           </AnimatedSection>
 
@@ -509,7 +521,7 @@ export default function Landing() {
           <AnimatedSection className="text-center">
             <Link href="/produtos">
               <Button variant="outline" size="lg" className="gap-2" data-testid="button-view-catalog">
-                Ver Catálogo Completo
+                {t("portfolio.view_catalog")}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
@@ -525,79 +537,77 @@ export default function Landing() {
             <AnimatedSection>
               <Badge variant="secondary" className="mb-4">
                 <Microscope className="w-3 h-3 mr-1" />
-                Ciência & Inovação
+                {t("science.badge")}
               </Badge>
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Tecnologia <span className="text-primary">Hy-Brid</span>
+                {t("science.title_part1")} <span className="text-primary">Hy-Brid</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                O laboratório GENOSS desenvolveu uma tecnologia patenteada que combina 
-                partículas de ácido hialurónico com tamanho uniforme, proporcionando 
-                resultados mais naturais e duradouros.
+                {t("science.description")}
               </p>
-              
+
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-1">Partículas Uniformes</h4>
+                    <h4 className="font-semibold mb-1">{t("science.features.uniform.title")}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Distribuição consistente para resultados previsíveis e naturais
+                      {t("science.features.uniform.description")}
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <TrendingUp className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-1">Estimula Colagénio</h4>
+                    <h4 className="font-semibold mb-1">{t("science.features.collagen.title")}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Promove a produção natural de colagénio para resultados prolongados
+                      {t("science.features.collagen.description")}
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Shield className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-1">Máxima Segurança</h4>
+                    <h4 className="font-semibold mb-1">{t("science.features.safety.title")}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Resíduo BDDE indetectável e baixo nível de endotoxina
+                      {t("science.features.safety.description")}
                     </p>
                   </div>
                 </div>
               </div>
             </AnimatedSection>
-            
+
             <AnimatedSection>
               <Card className="p-8 bg-background">
-                <h3 className="text-2xl font-bold mb-6 text-center">Especificações Técnicas</h3>
+                <h3 className="text-2xl font-bold mb-6 text-center">{t("science.specs.title")}</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center py-3 border-b">
-                    <span className="text-muted-foreground">Concentração HA</span>
+                    <span className="text-muted-foreground">{t("science.specs.ha_conc")}</span>
                     <span className="font-bold text-primary">24 mg/ml</span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b">
-                    <span className="text-muted-foreground">Peso Molecular</span>
+                    <span className="text-muted-foreground">{t("science.specs.molecular_weight")}</span>
                     <span className="font-bold">3.000.000 Da</span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b">
-                    <span className="text-muted-foreground">Lidocaína</span>
+                    <span className="text-muted-foreground">{t("science.specs.lidocaine")}</span>
                     <span className="font-bold">3%</span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b">
-                    <span className="text-muted-foreground">Volume/Seringa</span>
+                    <span className="text-muted-foreground">{t("science.specs.volume")}</span>
                     <span className="font-bold">1.1 ml</span>
                   </div>
                   <div className="flex justify-between items-center py-3">
-                    <span className="text-muted-foreground">Duração Média</span>
-                    <span className="font-bold text-primary">12-18 meses</span>
+                    <span className="text-muted-foreground">{t("science.specs.duration")}</span>
+                    <span className="font-bold text-primary">{t("science.specs.duration_value")}</span>
                   </div>
                 </div>
               </Card>
@@ -611,23 +621,21 @@ export default function Landing() {
         {/* Animated Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl animate-pulse" />
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4 animate-bounce">
               <Shield className="w-3 h-3 mr-1" />
-              Seguranca Comprovada
+              {t("safety.badge")}
             </Badge>
             <h2 className="text-4xl md:text-6xl font-bold mb-4">
               <span className="bg-gradient-to-r from-primary via-pink-500 to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-                SEGURO
+                {t("safety.title_part1")}
               </span>
-              {" "}Para Uso em Pacientes
+              {" "}{t("safety.title_part2")}
             </h2>
             <p className="text-muted-foreground max-w-3xl mx-auto text-lg leading-relaxed">
-              O risco de reacao alergica, edema e outros efeitos colaterais adversos foram minimizados 
-              pela reducao significativa do BDDE (agente quimico usado para reticulacao do acido hialuronico) 
-              ate ao ponto em que e <span className="text-primary font-bold">indetectavel</span>.
+              {t("safety.description")}
             </p>
           </AnimatedSection>
 
@@ -645,7 +653,7 @@ export default function Landing() {
                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
                     <FileCheck className="w-5 h-5 text-primary" />
                   </div>
-                  Teste de Performance | <span className="text-primary">CARA</span>
+                  {t("safety.table_title")} | <span className="text-primary">CARA</span>
                 </h3>
               </div>
               <CardContent className="p-0">
@@ -653,50 +661,50 @@ export default function Landing() {
                   <table className="w-full">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="px-6 py-4 text-left font-semibold">Aparencia</th>
-                        <th className="px-6 py-4 text-left font-semibold">Padrao</th>
-                        <th className="px-6 py-4 text-left font-semibold">Resultado</th>
+                        <th className="px-6 py-4 text-left font-semibold">{t("safety.table.header.appearance")}</th>
+                        <th className="px-6 py-4 text-left font-semibold">{t("safety.table.header.standard")}</th>
+                        <th className="px-6 py-4 text-left font-semibold">{t("safety.table.header.result")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      <TableRow 
-                        label="HA3" 
-                        standard="Sem impurezas, transparente e incolor gel" 
-                        result="Pass" 
-                        isSuccess 
+                      <TableRow
+                        label="HA3"
+                        standard={t("safety.table.ha3.standard")}
+                        result={t("safety.table.ha3.result")}
+                        isSuccess
                         delay={0}
                       />
-                      <TableRow 
-                        label="Concentracao" 
-                        standard="21.6 ~ 26.4 mg" 
-                        result="24.1 mg" 
+                      <TableRow
+                        label="Concentracao"
+                        standard="21.6 ~ 26.4 mg"
+                        result="24.1 mg"
                         delay={0.1}
                       />
-                      <TableRow 
-                        label="pH" 
-                        standard="6.5 ~ 7.5" 
-                        result="7.10" 
+                      <TableRow
+                        label="pH"
+                        standard="6.5 ~ 7.5"
+                        result="7.10"
                         delay={0.2}
                       />
-                      <TableRow 
-                        label="BDDE residual" 
-                        standard="< 2 ppm" 
-                        result="Nao detectado" 
-                        isHighlight 
+                      <TableRow
+                        label={t("safety.table.bdde.label")}
+                        standard="< 2 ppm"
+                        result={t("safety.table.bdde.result")}
+                        isHighlight
                         delay={0.3}
                       />
-                      <TableRow 
-                        label="Endotoxina" 
-                        standard="< 20 EU" 
-                        result="< 0.100 EU" 
-                        isHighlight 
+                      <TableRow
+                        label={t("safety.table.endotoxin.label")}
+                        standard="< 20 EU"
+                        result="< 0.100 EU"
+                        isHighlight
                         delay={0.4}
                       />
-                      <TableRow 
-                        label="Volume" 
-                        standard="> 1.0 mL" 
-                        result="Pass" 
-                        isSuccess 
+                      <TableRow
+                        label={t("safety.table.volume.label")}
+                        standard="> 1.0 mL"
+                        result={t("safety.table.volume.result")}
+                        isSuccess
                         delay={0.5}
                       />
                     </tbody>
@@ -704,13 +712,11 @@ export default function Landing() {
                 </div>
                 <div className="bg-muted/30 px-6 py-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-semibold text-foreground">O que e BDDE?</span> O eter 1,4-butanodioldiglicidilico (BDDE) 
-                    e um agente quimico de reticulacao que transforma o acido hialuronico em gel. 
-                    O residuo BDDE nao deve exceder 2ppm.
+                    <span className="font-semibold text-foreground">{t("safety.bdde.question")}</span> {t("safety.bdde.answer")}
                   </p>
                   <p className="text-sm font-bold text-primary mt-2 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
-                    Na CARA, o residuo BDDE foi indetectavel.
+                    {t("safety.bdde.result_text")}
                   </p>
                 </div>
               </CardContent>
@@ -719,26 +725,26 @@ export default function Landing() {
 
           {/* Animated Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-4xl mx-auto">
-            <SafetyStatCard 
-              icon={Shield} 
-              value="< 0.1 EU" 
-              label="Endotoxina" 
-              description="99.5% abaixo do limite" 
+            <SafetyStatCard
+              icon={Shield}
+              value="< 0.1 EU"
+              label={t("safety.stats.endotoxin.label")}
+              description={t("safety.stats.endotoxin.description")}
               delay={0.2}
             />
-            <SafetyStatCard 
-              icon={Sparkles} 
-              value="0 ppm" 
-              label="BDDE Detectado" 
-              description="Indetectavel" 
-              isHighlight 
+            <SafetyStatCard
+              icon={Sparkles}
+              value="0 ppm"
+              label={t("safety.stats.bdde.label")}
+              description={t("safety.stats.bdde.description")}
+              isHighlight
               delay={0.4}
             />
-            <SafetyStatCard 
-              icon={Award} 
-              value="100%" 
-              label="Conformidade" 
-              description="Todos os testes aprovados" 
+            <SafetyStatCard
+              icon={Award}
+              value="100%"
+              label={t("safety.stats.compliance.label")}
+              description={t("safety.stats.compliance.description")}
               delay={0.6}
             />
           </div>
@@ -751,13 +757,13 @@ export default function Landing() {
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <Award className="w-3 h-3 mr-1" />
-              Vantagens Competitivas
+              {t("features.badge")}
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Porquê Escolher <span className="text-primary">CARA</span>?
+              {t("features.title_part1")} <span className="text-primary">CARA</span>?
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Desenvolvido pelo laboratório GENOSS, líder em inovação médica há mais de 18 anos.
+              {t("features.description")}
             </p>
           </AnimatedSection>
 
@@ -796,13 +802,13 @@ export default function Landing() {
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <GraduationCap className="w-3 h-3 mr-1" />
-              Processo Simples
+              {t("process.badge")}
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Como <span className="text-primary">Começar</span>
+              {t("process.title_part1")} <span className="text-primary">{t("process.title_part2")}</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              O seu acesso profissional está a três passos de distância.
+              {t("process.description")}
             </p>
           </AnimatedSection>
 
@@ -845,10 +851,10 @@ export default function Landing() {
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <Users className="w-3 h-3 mr-1" />
-              Testemunhos
+              {t("testimonials.badge")}
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              O Que Dizem os <span className="text-primary">Profissionais</span>
+              {t("testimonials.title_part1")} <span className="text-primary">{t("testimonials.title_part2")}</span>
             </h2>
           </AnimatedSection>
 
@@ -887,10 +893,10 @@ export default function Landing() {
           <AnimatedSection className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <FileCheck className="w-3 h-3 mr-1" />
-              Dúvidas Frequentes
+              {t("faq.badge")}
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Perguntas <span className="text-primary">Frequentes</span>
+              {t("faq.title_part1")} <span className="text-primary">{t("faq.title_part2")}</span>
             </h2>
           </AnimatedSection>
 
@@ -903,7 +909,7 @@ export default function Landing() {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 viewport={{ once: true }}
               >
-                <Card 
+                <Card
                   className="cursor-pointer hover-elevate overflow-visible"
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
                   data-testid={`card-faq-${index}`}
@@ -911,15 +917,14 @@ export default function Landing() {
                   <CardContent className="p-6">
                     <div className="flex justify-between items-center gap-4">
                       <h3 className="font-semibold text-lg">{faq.question}</h3>
-                      <ArrowRight 
-                        className={`w-5 h-5 text-primary transition-transform flex-shrink-0 ${
-                          openFaq === index ? "rotate-90" : ""
-                        }`}
+                      <ArrowRight
+                        className={`w-5 h-5 text-primary transition-transform flex-shrink-0 ${openFaq === index ? "rotate-90" : ""
+                          }`}
                       />
                     </div>
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
-                      animate={{ 
+                      animate={{
                         height: openFaq === index ? "auto" : 0,
                         opacity: openFaq === index ? 1 : 0
                       }}
@@ -943,89 +948,87 @@ export default function Landing() {
             <AnimatedSection>
               <Badge variant="secondary" className="mb-4">
                 <Phone className="w-3 h-3 mr-1" />
-                Contacto
+                {t("contact.badge")}
               </Badge>
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                Precisa de <span className="text-primary">Ajuda</span>?
+                {t("contact.title_part1")} <span className="text-primary">{t("contact.title_part2")}</span>?
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                A nossa equipa está disponível para esclarecer todas as suas dúvidas 
-                e ajudá-lo no processo de registo profissional.
+                {t("contact.description")}
               </p>
-              
+
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Phone className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Telefone</p>
+                    <p className="text-sm text-muted-foreground">{t("contact.phone_label")}</p>
                     <p className="font-semibold">+351 210 000 000</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Mail className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="text-sm text-muted-foreground">{t("contact.email_label")}</p>
                     <p className="font-semibold">info@cara.pt</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <MapPin className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Morada</p>
+                    <p className="text-sm text-muted-foreground">{t("contact.address_label")}</p>
                     <p className="font-semibold">Lisboa, Portugal</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Clock className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Horário</p>
-                    <p className="font-semibold">Seg-Sex: 9h-18h</p>
+                    <p className="text-sm text-muted-foreground">{t("contact.hours_label")}</p>
+                    <p className="font-semibold">{t("contact.hours_value")}</p>
                   </div>
                 </div>
               </div>
             </AnimatedSection>
-            
+
             <AnimatedSection>
               <Card className="bg-primary text-primary-foreground border-primary-border">
                 <CardContent className="p-8 space-y-6">
                   <div className="text-center space-y-4">
                     <Building2 className="w-16 h-16 mx-auto opacity-90" />
                     <h3 className="text-2xl font-bold">
-                      Distribuidor Oficial Portugal
+                      {t("contact.distributor.title")}
                     </h3>
                     <p className="opacity-90">
-                      PROMIPHARM é o distribuidor exclusivo dos produtos CARA 
-                      em território português, garantindo qualidade e suporte local.
+                      {t("contact.distributor.description")}
                     </p>
                   </div>
-                  
+
                   <div className="border-t border-primary-foreground/20 pt-6 space-y-3">
                     <div className="flex items-center gap-3 opacity-90">
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Stock permanente em Portugal</span>
+                      <span>{t("contact.distributor.stock")}</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-90">
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Entregas em 24-48 horas</span>
+                      <span>{t("contact.distributor.delivery")}</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-90">
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Suporte técnico em português</span>
+                      <span>{t("contact.distributor.support")}</span>
                     </div>
                     <div className="flex items-center gap-3 opacity-90">
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Formação e workshops</span>
+                      <span>{t("contact.distributor.training")}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1040,7 +1043,7 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
         <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <motion.div
             className="max-w-4xl mx-auto text-center space-y-8"
@@ -1050,23 +1053,22 @@ export default function Landing() {
             viewport={{ once: true }}
           >
             <h2 className="text-4xl md:text-6xl font-bold">
-              Pronto para Elevar os Seus Tratamentos?
+              {t("cta.title")}
             </h2>
             <p className="text-xl opacity-90 max-w-2xl mx-auto">
-              Junte-se aos profissionais médicos que confiam na CARA para resultados 
-              excepcionais. Solicite o seu acesso agora e comece a transformar vidas.
+              {t("cta.description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
                 <Button size="lg" variant="secondary" className="gap-2 text-lg px-8 py-6" data-testid="button-cta-register">
                   <SiWhatsapp className="w-5 h-5" />
-                  Solicitar Acesso Profissional
+                  {t("cta.button_whatsapp")}
                 </Button>
               </a>
               <Link href="/contacto">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-cta-contact">
                   <Phone className="mr-2 w-5 h-5" />
-                  Falar Connosco
+                  {t("cta.button_contact")}
                 </Button>
               </Link>
             </div>

@@ -10,6 +10,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/useAuth";
 import { PendingApproval } from "@/components/pending-approval";
 import { LocationProvider, useLocationContext } from "@/contexts/LocationContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { GuestCartProvider } from "@/contexts/GuestCartContext";
 
 import NotFound from "@/pages/not-found";
@@ -202,10 +203,12 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="cara-ui-theme">
         <TooltipProvider>
           <LocationProvider>
-            <GuestCartProvider>
-              <Router />
-              <Toaster />
-            </GuestCartProvider>
+            <LanguageProvider>
+              <GuestCartProvider>
+                <Router />
+                <Toaster />
+              </GuestCartProvider>
+            </LanguageProvider>
           </LocationProvider>
         </TooltipProvider>
       </ThemeProvider>

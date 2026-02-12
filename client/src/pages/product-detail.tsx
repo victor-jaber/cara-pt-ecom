@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/LocationContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import type { Product } from "@shared/schema";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/produto/:slug");
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const { isAuthenticated } = useAuth();
@@ -46,14 +48,14 @@ export default function ProductDetail() {
         queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       }
       toast({
-        title: "Produto adicionado",
-        description: `${quantity}x ${product?.name} adicionado ao carrinho.`,
+        title: t("cart.added"),
+        description: t("cart.addedDesc"),
       });
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o produto ao carrinho.",
+        title: t("cart.error"),
+        description: t("cart.errorDesc"),
         variant: "destructive",
       });
     },
@@ -98,10 +100,10 @@ export default function ProductDetail() {
         <Card>
           <CardContent className="p-12 text-center">
             <Package className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-medium">Produto não encontrado</h3>
-            <p className="text-muted-foreground mt-1">O produto que procura não existe ou foi removido.</p>
+            <h3 className="mt-4 text-lg font-medium">{t("shop.detail.notFoundTitle")}</h3>
+            <p className="text-muted-foreground mt-1">{t("shop.detail.notFoundDesc")}</p>
             <Link href="/produtos">
-              <Button className="mt-4">Ver Catálogo</Button>
+              <Button className="mt-4">{t("shop.detail.viewCatalog")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -114,7 +116,7 @@ export default function ProductDetail() {
       <Link href="/produtos">
         <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-products">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar aos Produtos
+          {t("shop.detail.back")}
         </Button>
       </Link>
 
@@ -134,7 +136,7 @@ export default function ProductDetail() {
           )}
           {!product.inStock && (
             <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-              <Badge variant="secondary" className="text-lg px-4 py-2">Esgotado</Badge>
+              <Badge variant="secondary" className="text-lg px-4 py-2">{t("shop.detail.outOfStock")}</Badge>
             </div>
           )}
         </div>
@@ -148,7 +150,7 @@ export default function ProductDetail() {
             <h1 className="text-3xl md:text-4xl font-bold">{product.name}</h1>
             {product.infodmCode && (
               <p className="text-sm text-muted-foreground mt-2">
-                CDM INFARMED: {product.infodmCode}
+                {t("shop.detail.infarmed")} {product.infodmCode}
               </p>
             )}
           </div>
@@ -158,7 +160,7 @@ export default function ProductDetail() {
             const totalPrice = calculateItemPrice(quantity, product.price, product.promotionRules);
             const originalTotal = Number(product.price) * quantity;
             const hasDiscount = applicableRule !== null;
-            
+
             return (
               <div className="space-y-1">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -178,7 +180,7 @@ export default function ProductDetail() {
                       </span>
                       <Badge variant="secondary" className="text-xs">
                         <Tag className="h-3 w-3 mr-1" />
-                        Desconto Quantidade
+                        {t("shop.detail.quantityDiscount")}
                       </Badge>
                     </>
                   ) : (
@@ -195,7 +197,7 @@ export default function ProductDetail() {
                     {(totalPrice / quantity).toLocaleString("pt-PT", {
                       style: "currency",
                       currency: "EUR",
-                    })} / unidade
+                    })} {t("shop.detail.perUnit")}
                   </p>
                 )}
               </div>
@@ -211,7 +213,7 @@ export default function ProductDetail() {
               <CardContent className="p-4 space-y-3">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Tag className="h-4 w-4" />
-                  Descontos por Quantidade
+                  {t("shop.detail.quantityDiscountsTitle")}
                 </h3>
                 <div className="space-y-2">
                   {[...product.promotionRules]
@@ -221,20 +223,19 @@ export default function ProductDetail() {
                       return (
                         <div
                           key={index}
-                          className={`flex justify-between items-center text-sm p-2 rounded-md ${
-                            isActive
+                          className={`flex justify-between items-center text-sm p-2 rounded-md ${isActive
                               ? "bg-emerald-500/10 border border-emerald-500/30"
                               : "bg-muted/50"
-                          }`}
+                            }`}
                         >
                           <span className={isActive ? "font-medium" : ""}>
-                            A partir de {rule.minQuantity} unidades
+                            {t("shop.detail.fromUnits").replace("{min}", rule.minQuantity.toString())}
                           </span>
                           <span className={`font-medium ${isActive ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
                             {Number(rule.pricePerUnit).toLocaleString("pt-PT", {
                               style: "currency",
                               currency: "EUR",
-                            })} / unidade
+                            })} {t("shop.detail.perUnit")}
                           </span>
                         </div>
                       );
@@ -247,29 +248,29 @@ export default function ProductDetail() {
           {/* Technical Specs */}
           <Card>
             <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold">Especificações Técnicas</h3>
+              <h3 className="font-semibold">{t("shop.detail.specsTitle")}</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {product.particleSize && (
                   <div>
-                    <span className="text-muted-foreground">Tamanho da Partícula</span>
+                    <span className="text-muted-foreground">{t("shop.detail.particleSize")}</span>
                     <p className="font-medium">{product.particleSize}</p>
                   </div>
                 )}
                 {product.needleSize && (
                   <div>
-                    <span className="text-muted-foreground">Tamanho da Agulha</span>
+                    <span className="text-muted-foreground">{t("shop.detail.needleSize")}</span>
                     <p className="font-medium">{product.needleSize}</p>
                   </div>
                 )}
                 {product.injectionDepth && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">Profundidade de Injeção</span>
+                    <span className="text-muted-foreground">{t("shop.detail.injectionDepth")}</span>
                     <p className="font-medium">{product.injectionDepth}</p>
                   </div>
                 )}
                 {product.applicationZones && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">Zonas de Aplicação</span>
+                    <span className="text-muted-foreground">{t("shop.detail.applicationZones")}</span>
                     <p className="font-medium">{product.applicationZones}</p>
                   </div>
                 )}
@@ -281,19 +282,19 @@ export default function ProductDetail() {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span>3% Lidocaína para maior conforto</span>
+              <span>{t("shop.detail.features.lidocaine")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span>24mg/ml de Ácido Hialurónico</span>
+              <span>{t("shop.detail.features.ha")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span>Agulha Super Fina (Thin Wall)</span>
+              <span>{t("shop.detail.features.needle")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span>Tecnologia Hy-Brid Cruelty Free</span>
+              <span>{t("shop.detail.features.technology")}</span>
             </div>
           </div>
 
@@ -335,7 +336,7 @@ export default function ProductDetail() {
                 data-testid="button-add-to-cart"
               >
                 <ShoppingCart className="mr-2 h-5 w-5" />
-                Adicionar ao Carrinho
+                {t("shop.detail.addToCart")}
               </Button>
             </div>
           )}

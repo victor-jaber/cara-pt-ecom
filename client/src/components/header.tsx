@@ -1,10 +1,18 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/LocationContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
 import { clearStoredAuthUser } from "@/lib/authPersistence";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ShoppingCart, 
-  User, 
-  LogOut, 
-  Settings, 
-  Package, 
+import {
+  ShoppingCart,
+  User,
+  LogOut,
+  Settings,
+  Package,
   Menu,
   Home,
   FlaskConical,
@@ -46,12 +54,13 @@ const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent
 export function Header() {
   const { user, isAuthenticated, isApproved, isAdmin } = useAuth();
   const { isPortugal, isInternational } = useLocationContext();
+  const { t, language, setLanguage } = useLanguage();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const guestCart = useGuestCart();
 
   const canAccessProducts = isInternational || isApproved;
-  
+
   // International users always use guest cart (localStorage) for reliability
   const shouldUseGuestCart = isInternational;
 
@@ -60,7 +69,7 @@ export function Header() {
     enabled: !isInternational && isAuthenticated && canAccessProducts,
   });
 
-  const cartCount = shouldUseGuestCart 
+  const cartCount = shouldUseGuestCart
     ? guestCart.items.reduce((acc, item) => acc + item.quantity, 0)
     : apiCartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -75,10 +84,10 @@ export function Header() {
   };
 
   const navLinks = [
-    { href: "/", label: "Início", icon: Home, requiresAccess: false },
-    { href: "/produtos", label: "Produtos", icon: FlaskConical, requiresAccess: true },
-    { href: "/sobre", label: "Sobre Nós", icon: Info, requiresAccess: false },
-    { href: "/contacto", label: "Contacto", icon: Phone, requiresAccess: false },
+    { href: "/", label: t("nav.home"), icon: Home, requiresAccess: false },
+    { href: "/produtos", label: t("nav.products"), icon: FlaskConical, requiresAccess: true },
+    { href: "/sobre", label: t("nav.about"), icon: Info, requiresAccess: false },
+    { href: "/contacto", label: t("nav.contact"), icon: Phone, requiresAccess: false },
   ];
 
   return (
@@ -110,7 +119,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div 
+          <div
             className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-sm"
             data-testid="location-indicator"
           >
@@ -128,6 +137,18 @@ export function Header() {
           </div>
 
           <ThemeToggle />
+
+          <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
+            <SelectTrigger className="w-[70px] h-8 gap-1 border-none bg-transparent focus:ring-0 px-2" data-testid="language-selector">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pt">🇵🇹 PT</SelectItem>
+              <SelectItem value="en">🇺🇸 EN</SelectItem>
+              <SelectItem value="es">🇪🇸 ES</SelectItem>
+              <SelectItem value="fr">🇫🇷 FR</SelectItem>
+            </SelectContent>
+          </Select>
 
           {isAuthenticated ? (
             <>
@@ -184,19 +205,19 @@ export function Header() {
                   <Link href="/minha-conta">
                     <DropdownMenuItem data-testid="menu-account">
                       <User className="mr-2 h-4 w-4" />
-                      Minha Conta
+                      {t("nav.account")}
                     </DropdownMenuItem>
                   </Link>
                   {isApproved && (
                     <Link href="/meus-pedidos">
                       <DropdownMenuItem data-testid="menu-orders">
                         <Package className="mr-2 h-4 w-4" />
-                        Meus Pedidos
+                        {t("nav.orders")}
                       </DropdownMenuItem>
                     </Link>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     data-testid="menu-logout"
                     onClick={async () => {
                       await fetch("/api/auth/logout", { method: "POST" });
@@ -205,7 +226,7 @@ export function Header() {
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sair
+                    {t("nav.logout")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -227,12 +248,12 @@ export function Header() {
               </Link>
               <Link href="/login" className="hidden md:block">
                 <Button variant="ghost" size="sm" data-testid="button-login">
-                  Entrar
+                  {t("nav.login")}
                 </Button>
               </Link>
               <Link href="/login?tab=register" className="hidden md:block">
                 <Button size="sm" data-testid="button-register">
-                  Criar Conta
+                  {t("nav.register")}
                 </Button>
               </Link>
             </div>
@@ -240,12 +261,12 @@ export function Header() {
             <div className="hidden md:flex items-center gap-2">
               <Link href="/login">
                 <Button variant="ghost" size="sm" data-testid="button-login">
-                  Entrar
+                  {t("nav.login")}
                 </Button>
               </Link>
               <Link href="/login?tab=register">
                 <Button size="sm" data-testid="button-register">
-                  Solicitar Acesso
+                  {t("nav.request_access")}
                 </Button>
               </Link>
             </div>
@@ -273,7 +294,7 @@ export function Header() {
                       </div>
                       <div>
                         <h2 className="text-xl font-bold">CARA</h2>
-                        <p className="text-xs opacity-80">Preenchimento Premium</p>
+                        <p className="text-xs opacity-80">{t("nav.premium_filler")}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/20 backdrop-blur text-sm">
@@ -296,12 +317,12 @@ export function Header() {
                     <div className="flex gap-2 mt-4 pt-4 border-t border-white/20">
                       <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1">
                         <Button variant="outline" className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20">
-                          Entrar
+                          {t("nav.login")}
                         </Button>
                       </Link>
                       <Link href="/login?tab=register" onClick={() => setMobileMenuOpen(false)} className="flex-1">
                         <Button className="w-full bg-white text-primary hover:bg-white/90">
-                          {isPortugal ? "Solicitar Acesso" : "Criar Conta"}
+                          {isPortugal ? t("nav.request_access") : t("nav.register")}
                         </Button>
                       </Link>
                     </div>
@@ -318,17 +339,15 @@ export function Header() {
                     const Icon = link.icon;
                     return (
                       <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)}>
-                        <div 
-                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                            isActive 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'hover:bg-muted'
-                          }`}
+                        <div
+                          className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-muted'
+                            }`}
                           style={{ animationDelay: `${index * 50}ms` }}
                         >
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                            isActive ? 'bg-primary text-primary-foreground' : 'bg-muted group-hover:bg-primary/20'
-                          }`}>
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted group-hover:bg-primary/20'
+                            }`}>
                             <Icon className="w-5 h-5" />
                           </div>
                           <span className="font-medium flex-1">{link.label}</span>
@@ -342,14 +361,14 @@ export function Header() {
                 {/* User Actions */}
                 {isAuthenticated && (
                   <div className="mt-6 pt-6 border-t space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-2">Minha Conta</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-2">{t("nav.account")}</p>
                     {isAdmin && (
                       <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
                         <div className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-muted transition-all group">
                           <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                             <Settings className="w-5 h-5 text-orange-500" />
                           </div>
-                          <span className="font-medium flex-1">Painel Admin</span>
+                          <span className="font-medium flex-1">{t("nav.admin")}</span>
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                         </div>
                       </Link>
@@ -359,7 +378,7 @@ export function Header() {
                         <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                           <User className="w-5 h-5 text-blue-500" />
                         </div>
-                        <span className="font-medium flex-1">Minha Conta</span>
+                        <span className="font-medium flex-1">{t("nav.account")}</span>
                         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                       </div>
                     </Link>
@@ -369,12 +388,12 @@ export function Header() {
                           <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
                             <Package className="w-5 h-5 text-purple-500" />
                           </div>
-                          <span className="font-medium flex-1">Meus Pedidos</span>
+                          <span className="font-medium flex-1">{t("nav.orders")}</span>
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                         </div>
                       </Link>
                     )}
-                    <button 
+                    <button
                       onClick={async () => {
                         await fetch("/api/auth/logout", { method: "POST" });
                         clearStoredAuthUser();
@@ -386,18 +405,18 @@ export function Header() {
                       <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
                         <LogOut className="w-5 h-5 text-red-500" />
                       </div>
-                      <span className="font-medium flex-1 text-red-500">Sair</span>
+                      <span className="font-medium flex-1 text-red-500">{t("nav.logout")}</span>
                     </button>
                   </div>
                 )}
 
                 {/* Features Highlight */}
                 <div className="mt-6 pt-6 border-t">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-3">Porquê CARA?</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 mb-3">{t("nav.why_cara")}</p>
                   <div className="grid grid-cols-2 gap-2 px-2">
                     <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 text-center">
                       <Shield className="w-5 h-5 text-primary mb-1" />
-                      <span className="text-xs font-medium">BDDE Indetectável</span>
+                      <span className="text-xs font-medium">{t("nav.undetectable_bdde")}</span>
                     </div>
                     <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-pink-500/5 to-pink-500/10 text-center">
                       <Award className="w-5 h-5 text-pink-500 mb-1" />
@@ -405,11 +424,11 @@ export function Header() {
                     </div>
                     <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 text-center">
                       <Sparkles className="w-5 h-5 text-blue-500 mb-1" />
-                      <span className="text-xs font-medium">Tech Hy-Brid</span>
+                      <span className="text-xs font-medium">{t("nav.tech_hybrid")}</span>
                     </div>
                     <div className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-green-500/5 to-green-500/10 text-center">
                       <Heart className="w-5 h-5 text-green-500 mb-1" />
-                      <span className="text-xs font-medium">Cruelty Free</span>
+                      <span className="text-xs font-medium">{t("nav.cruelty_free")}</span>
                     </div>
                   </div>
                 </div>
@@ -418,7 +437,7 @@ export function Header() {
               {/* Footer with contact and social */}
               <div className="border-t bg-muted/30 px-6 py-5">
                 {/* WhatsApp Support */}
-                <a 
+                <a
                   href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -426,8 +445,8 @@ export function Header() {
                 >
                   <SiWhatsapp className="w-5 h-5" />
                   <div className="flex-1">
-                    <p className="font-medium text-sm">Suporte WhatsApp</p>
-                    <p className="text-xs opacity-80">Resposta em minutos</p>
+                    <p className="font-medium text-sm">{t("nav.support_whatsapp")}</p>
+                    <p className="text-xs opacity-80">{t("nav.response_time")}</p>
                   </div>
                   <ChevronRight className="w-4 h-4" />
                 </a>

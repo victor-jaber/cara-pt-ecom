@@ -15,27 +15,29 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  Mail,
+  Phone,
+  MapPin,
   Clock,
   Send
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-
-const contactSchema = z.object({
-  name: z.string().min(2, "Nome é obrigatório"),
-  email: z.string().email("Email inválido"),
-  phone: z.string().optional(),
-  subject: z.string().min(2, "Assunto é obrigatório"),
-  message: z.string().min(10, "Mensagem deve ter pelo menos 10 caracteres"),
-});
-
-type ContactFormData = z.infer<typeof contactSchema>;
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ContactPage() {
   const { toast } = useToast();
+  const { t } = useLanguage();
+
+  const contactSchema = z.object({
+    name: z.string().min(2, t("contactPage.validation.nameRequired")),
+    email: z.string().email(t("contactPage.validation.emailInvalid")),
+    phone: z.string().optional(),
+    subject: z.string().min(2, t("contactPage.validation.subjectRequired")),
+    message: z.string().min(10, t("contactPage.validation.messageMin")),
+  });
+
+  type ContactFormData = z.infer<typeof contactSchema>;
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -57,15 +59,15 @@ export default function ContactPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Mensagem Enviada",
-        description: "Entraremos em contacto consigo brevemente.",
+        title: t("contactPage.toast.successTitle"),
+        description: t("contactPage.toast.successDesc"),
       });
       form.reset();
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Não foi possível enviar a mensagem. Tente novamente.",
+        title: t("contactPage.toast.errorTitle"),
+        description: t("contactPage.toast.errorDesc"),
         variant: "destructive",
       });
     },
@@ -78,25 +80,25 @@ export default function ContactPage() {
   const contactInfo = [
     {
       icon: Mail,
-      label: "Email",
+      label: t("contactPage.info.email"),
       value: "info@cara-portugal.pt",
       href: "mailto:info@cara-portugal.pt",
     },
     {
       icon: Phone,
-      label: "Telefone",
+      label: t("contactPage.info.phone"),
       value: "+351 21 000 0000",
       href: "tel:+351210000000",
     },
     {
       icon: MapPin,
-      label: "Morada",
+      label: t("contactPage.info.address"),
       value: "Lisboa, Portugal",
       href: null,
     },
     {
       icon: Clock,
-      label: "Horário",
+      label: t("contactPage.info.hours"),
       value: "Seg-Sex: 9h-18h",
       href: null,
     },
@@ -106,10 +108,10 @@ export default function ContactPage() {
     <div className="container mx-auto px-4 py-12 max-w-5xl">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold tracking-tight" data-testid="text-contact-title">
-          Contacte-nos
+          {t("contactPage.title")}
         </h1>
         <p className="text-xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-          Estamos disponíveis para responder às suas questões e fornecer informações sobre os nossos produtos
+          {t("contactPage.subtitle")}
         </p>
       </div>
 
@@ -117,7 +119,7 @@ export default function ContactPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Informações de Contacto</CardTitle>
+              <CardTitle>{t("contactPage.info.title")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {contactInfo.map((item) => (
@@ -144,11 +146,9 @@ export default function ContactPage() {
 
           <Card>
             <CardContent className="p-6">
-              <h3 className="font-semibold mb-2">Profissionais de Saúde</h3>
+              <h3 className="font-semibold mb-2">{t("contactPage.professional.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                Para solicitar acesso à nossa loja online e catálogo de produtos, 
-                registe-se através do botão "Solicitar Acesso" no topo da página. 
-                A sua conta será verificada e aprovada pela nossa equipa.
+                {t("contactPage.professional.description")}
               </p>
             </CardContent>
           </Card>
@@ -157,7 +157,7 @@ export default function ContactPage() {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Envie-nos uma Mensagem</CardTitle>
+              <CardTitle>{t("contactPage.form.title")}</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -168,7 +168,7 @@ export default function ContactPage() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nome</FormLabel>
+                          <FormLabel>{t("contactPage.form.name")}</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-contact-name" />
                           </FormControl>
@@ -181,7 +181,7 @@ export default function ContactPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{t("contactPage.form.email")}</FormLabel>
                           <FormControl>
                             <Input {...field} type="email" data-testid="input-contact-email" />
                           </FormControl>
@@ -197,7 +197,7 @@ export default function ContactPage() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Telefone (opcional)</FormLabel>
+                          <FormLabel>{t("contactPage.form.phone")}</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-contact-phone" />
                           </FormControl>
@@ -210,7 +210,7 @@ export default function ContactPage() {
                       name="subject"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Assunto</FormLabel>
+                          <FormLabel>{t("contactPage.form.subject")}</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-contact-subject" />
                           </FormControl>
@@ -225,11 +225,11 @@ export default function ContactPage() {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mensagem</FormLabel>
+                        <FormLabel>{t("contactPage.form.message")}</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            {...field} 
-                            rows={5} 
+                          <Textarea
+                            {...field}
+                            rows={5}
                             data-testid="input-contact-message"
                           />
                         </FormControl>
@@ -245,7 +245,7 @@ export default function ContactPage() {
                     data-testid="button-submit-contact"
                   >
                     <Send className="h-4 w-4 mr-2" />
-                    {submitMutation.isPending ? "A enviar..." : "Enviar Mensagem"}
+                    {submitMutation.isPending ? t("contactPage.form.submitting") : t("contactPage.form.submit")}
                   </Button>
                 </form>
               </Form>

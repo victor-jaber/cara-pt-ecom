@@ -13,16 +13,18 @@ import type { Product } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useLocationContext } from "@/contexts/LocationContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const PRODUCT_CATEGORIES = [
-  { value: "all", label: "Todos" },
-  { value: "soft", label: "CARA SOFT" },
-  { value: "mild", label: "CARA MILD" },
-  { value: "hard", label: "CARA HARD" },
-  { value: "ultra", label: "CARA ULTRA" },
+  { value: "all", label: "shop.filters.all" },
+  { value: "soft", label: "shop.filters.soft" },
+  { value: "mild", label: "shop.filters.mild" },
+  { value: "hard", label: "shop.filters.hard" },
+  { value: "ultra", label: "shop.filters.ultra" },
 ] as const;
 
 export default function Products() {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -43,14 +45,14 @@ export default function Products() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       toast({
-        title: "Produto adicionado",
-        description: "O produto foi adicionado ao carrinho.",
+        title: t("cart.added"),
+        description: t("cart.addedDesc"),
       });
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o produto ao carrinho.",
+        title: t("cart.error"),
+        description: t("cart.errorDesc"),
         variant: "destructive",
       });
     },
@@ -60,8 +62,8 @@ export default function Products() {
     if (shouldUseGuestCart) {
       guestCart.addItem(product);
       toast({
-        title: "Produto adicionado",
-        description: "O produto foi adicionado ao carrinho.",
+        title: t("cart.added"),
+        description: t("cart.addedDesc"),
       });
     } else {
       addToCartMutation.mutate(product.id);
@@ -73,18 +75,18 @@ export default function Products() {
       const searchLower = searchText.toLowerCase().trim();
       const nameLower = product.name.toLowerCase();
       const descLower = (product.description || "").toLowerCase();
-      
-      const matchesSearch = searchLower === "" || 
-        nameLower.includes(searchLower) || 
+
+      const matchesSearch = searchLower === "" ||
+        nameLower.includes(searchLower) ||
         descLower.includes(searchLower);
-      
+
       if (selectedCategory === "all") {
         return matchesSearch;
       }
-      
+
       // Use the category field directly
       const matchesCategory = product.category === selectedCategory;
-      
+
       return matchesSearch && matchesCategory;
     });
   }, [products, searchText, selectedCategory]);
@@ -99,9 +101,9 @@ export default function Products() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Catálogo de Produtos</h1>
+        <h1 className="text-3xl font-bold">{t("shop.catalog.title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Explore a nossa linha completa de Ácido Hialurónico CARA.
+          {t("shop.catalog.subtitle")}
         </p>
       </div>
 
@@ -111,7 +113,7 @@ export default function Products() {
         <div className="flex gap-2 items-center max-w-md">
           <Input
             type="text"
-            placeholder="Pesquisar produtos..."
+            placeholder={t("shop.search.placeholder")}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="flex-1"
@@ -139,7 +141,7 @@ export default function Products() {
               onClick={() => setSelectedCategory(cat.value)}
               data-testid={`filter-${cat.value}`}
             >
-              {cat.label}
+              {t(cat.label)}
             </Button>
           ))}
         </div>
@@ -150,9 +152,9 @@ export default function Products() {
         <div className="flex flex-wrap items-center gap-2 mb-6">
           {searchText && (
             <Badge variant="secondary" className="gap-1">
-              Pesquisa: {searchText}
-              <button 
-                onClick={() => setSearchText("")} 
+              {t("shop.filters.search")} {searchText}
+              <button
+                onClick={() => setSearchText("")}
                 className="ml-1 hover:text-destructive"
                 data-testid="badge-clear-search"
               >
@@ -162,9 +164,9 @@ export default function Products() {
           )}
           {selectedCategory !== "all" && (
             <Badge variant="secondary" className="gap-1">
-              Categoria: {PRODUCT_CATEGORIES.find(c => c.value === selectedCategory)?.label}
-              <button 
-                onClick={() => setSelectedCategory("all")} 
+              {t("shop.filters.category")} {t(PRODUCT_CATEGORIES.find(c => c.value === selectedCategory)?.label || "")}
+              <button
+                onClick={() => setSelectedCategory("all")}
                 className="ml-1 hover:text-destructive"
                 data-testid="badge-clear-category"
               >
@@ -178,7 +180,7 @@ export default function Products() {
             onClick={clearFilters}
             data-testid="button-clear-all-filters"
           >
-            Limpar filtros
+            {t("shop.filters.clear")}
           </Button>
         </div>
       )}
@@ -191,26 +193,26 @@ export default function Products() {
           <CardContent className="p-12 text-center">
             <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-medium">
-              {products.length === 0 ? "Nenhum produto disponível" : "Nenhum produto encontrado"}
+              {products.length === 0 ? t("shop.empty.available") : t("shop.empty.found")}
             </h3>
             <p className="text-muted-foreground mt-1">
               {products.length === 0
-                ? "Os produtos serão adicionados em breve."
-                : "Tente ajustar os filtros de pesquisa."}
+                ? t("shop.empty.availableDesc")
+                : t("shop.empty.foundDesc")}
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
           <p className="text-sm text-muted-foreground mb-4">
-            {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado{filteredProducts.length !== 1 ? "s" : ""}
+            {filteredProducts.length} {t("shop.count")}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
-                onAddToCart={handleAddToCart}
+                onAddToCart={() => handleAddToCart(product)}
                 isLoading={addToCartMutation.isPending}
               />
             ))}
