@@ -335,6 +335,7 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
     const identifier = randomUUID();
 
     // Follow the official structure: { payment, customer }
+    // IMPORTANT: customerPhone and countryCode must be inside the payment object, not customer
     const v102Body = {
       payment: {
         identifier,
@@ -343,13 +344,13 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
           value: Number(total.toFixed(2)),
           currency: "EUR",
         },
+        customerPhone: phoneForGateway,
+        countryCode: "+351",
       },
       customer: {
-        // Keep a couple of aliases, but only inside the documented `customer` object.
-        phone: phoneForGateway,
-        customerPhone: phoneForGateway,
-        CustomerPhone: phoneForGateway,
+        notify: true,
         email: user.email,
+        phone: phoneForGateway,
       },
     };
 
