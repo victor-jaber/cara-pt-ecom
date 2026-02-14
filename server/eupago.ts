@@ -334,15 +334,8 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
 
     const identifier = randomUUID();
 
+    // Follow the official structure: { payment, customer }
     const v102Body = {
-      customerPhone: phoneForGateway,
-      CustomerPhone: phoneForGateway,
-      phone: phoneForGateway,
-      telemovel: phoneForGateway,
-      telefone: phoneForGateway,
-      customerEmail: user.email,
-      CustomerEmail: user.email,
-      email: user.email,
       payment: {
         identifier,
         title: `Pedido ${identifier}`,
@@ -352,14 +345,10 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
         },
       },
       customer: {
-        // Keep multiple aliases; some EuPago deployments validate specific keys.
+        // Keep a couple of aliases, but only inside the documented `customer` object.
+        phone: phoneForGateway,
         customerPhone: phoneForGateway,
         CustomerPhone: phoneForGateway,
-        phone: phoneForGateway,
-        phoneNumber: phoneForGateway,
-        mobile: phoneForGateway,
-        customerEmail: user.email,
-        CustomerEmail: user.email,
         email: user.email,
       },
     };
@@ -378,10 +367,13 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       console.error("EuPago MBWay create failed:", eupagoResponse.status, eupagoResponse.rawText);
       const code = asString((eupagoResponse.data as any)?.code) || "";
       if (eupagoResponse.status === 400 && code === "CUSTOMERPHONE_MISSING") {
-        console.error("EuPago MBWay payload keys:", {
-          topLevel: Object.keys(v102Body),
-          customer: Object.keys((v102Body as any).customer || {}),
-          payment: Object.keys((v102Body as any).payment || {}),
+        const masked = phoneForGateway.length >= 4 ? `${phoneForGateway.slice(0, 2)}***${phoneForGateway.slice(-2)}` : "***";
+        console.error("EuPago MBWay CUSTOMERPHONE_MISSING debug:", {
+          phoneLen: phoneForGateway.length,
+          phoneMasked: masked,
+          payloadKeys: Object.keys(v102Body),
+          customerKeys: Object.keys((v102Body as any).customer || {}),
+          paymentKeys: Object.keys((v102Body as any).payment || {}),
         });
         return res.status(400).json({ message: "Telefone MB WAY é obrigatório" });
       }
