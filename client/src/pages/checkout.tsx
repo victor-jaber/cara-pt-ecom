@@ -646,11 +646,16 @@ export default function Checkout() {
               region={region}
               items={eupagoItems}
               disabled={!canPay}
-              onSuccess={() => {
+              onSuccess={(details) => {
+                if (isInternational) {
+                  guestCart.clearCart();
+                }
+                queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
                 toast({
                   title: "Pedido criado",
                   description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
                 });
+                setLocation(`/pedido/${details.orderId}`);
               }}
               onError={(error) => {
                 toast({
@@ -672,11 +677,16 @@ export default function Checkout() {
               region={region}
               items={eupagoItems}
               disabled={!canPay}
-              onSuccess={() => {
+              onSuccess={(details) => {
+                if (isInternational) {
+                  guestCart.clearCart();
+                }
+                queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
                 toast({
                   title: "Pedido criado",
                   description: "Pedido MBWay enviado. Confirme na app para concluir.",
                 });
+                setLocation(`/pedido/${details.orderId}`);
               }}
               onError={(error) => {
                 toast({
@@ -857,10 +867,66 @@ export default function Checkout() {
                       />
                     )}
 
-                    {(paymentChoice === "eupago_multibanco" || paymentChoice === "eupago_mbway") && (
-                      <div className="text-sm text-muted-foreground">
-                        EuPago será habilitado no checkout assim que a integração for finalizada.
-                      </div>
+                    {paymentChoice === "eupago_multibanco" && (
+                      <EupagoPayment
+                        method="multibanco"
+                        shippingAddress={form.watch("shippingAddress")}
+                        notes={form.watch("notes") || ""}
+                        shippingOptionId={selectedShippingId || undefined}
+                        countryCode={countryCode}
+                        region={region}
+                        items={eupagoItems}
+                        disabled={!canPay}
+                        onSuccess={(details) => {
+                          if (isInternational) {
+                            guestCart.clearCart();
+                          }
+                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                          toast({
+                            title: "Pedido criado",
+                            description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
+                          });
+                          setLocation(`/pedido/${details.orderId}`);
+                        }}
+                        onError={(error) => {
+                          toast({
+                            title: "Erro no pagamento",
+                            description: error.message || "Não foi possível processar o pedido.",
+                            variant: "destructive",
+                          });
+                        }}
+                      />
+                    )}
+
+                    {paymentChoice === "eupago_mbway" && (
+                      <EupagoPayment
+                        method="mbway"
+                        shippingAddress={form.watch("shippingAddress")}
+                        notes={form.watch("notes") || ""}
+                        shippingOptionId={selectedShippingId || undefined}
+                        countryCode={countryCode}
+                        region={region}
+                        items={eupagoItems}
+                        disabled={!canPay}
+                        onSuccess={(details) => {
+                          if (isInternational) {
+                            guestCart.clearCart();
+                          }
+                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                          toast({
+                            title: "Pedido criado",
+                            description: "Pedido MBWay enviado. Confirme na app para concluir.",
+                          });
+                          setLocation(`/pedido/${details.orderId}`);
+                        }}
+                        onError={(error) => {
+                          toast({
+                            title: "Erro no pagamento",
+                            description: error.message || "Não foi possível processar o pedido.",
+                            variant: "destructive",
+                          });
+                        }}
+                      />
                     )}
                   </div>
                 </div>

@@ -22,6 +22,7 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import Account from "@/pages/account";
 import Orders from "@/pages/orders";
+import OrderConfirmation from "@/pages/order-confirmation";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
 
@@ -183,6 +184,9 @@ function Router() {
       )} />
       <Route path="/meus-pedidos" component={() => (
         <ProtectedRoute><Orders /></ProtectedRoute>
+      )} />
+      <Route path="/pedido/:id" component={() => (
+        <ProtectedRoute><OrderConfirmation /></ProtectedRoute>
       )} />
       <Route path="/sobre" component={() => (
         <PublicLayout><About /></PublicLayout>

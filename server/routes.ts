@@ -761,7 +761,12 @@ export async function registerRoutes(
   app.get("/api/admin/orders", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const orders = await storage.getAllOrders();
-      res.json(orders);
+      // Never return password hashes to the client.
+      const sanitized = orders.map((order: any) => ({
+        ...order,
+        user: order.user ? { ...order.user, passwordHash: undefined } : order.user,
+      }));
+      res.json(sanitized);
     } catch (error) {
       console.error("Error fetching all orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });

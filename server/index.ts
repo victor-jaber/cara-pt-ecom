@@ -52,7 +52,26 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: any = undefined;
+
+  const maskForLogs = (value: any): any => {
+    const SENSITIVE_KEY = /^(passwordHash|clientSecret|secretKey|apiKey|accessToken|refreshToken|token|authorization)$/i;
+
+    if (value == null) return value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+    if (Array.isArray(value)) return value.map(maskForLogs);
+    if (typeof value !== "object") return value;
+
+    const out: any = {};
+    for (const [key, v] of Object.entries(value)) {
+      if (SENSITIVE_KEY.test(key)) {
+        out[key] = typeof v === "string" && v ? "********" : v;
+        continue;
+      }
+      out[key] = maskForLogs(v);
+    }
+    return out;
+  };
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -65,7 +84,8 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        // Prevent leaking secrets (e.g., /api/admin/payment-methods?reveal=1) into server logs.
+        logLine += ` :: ${JSON.stringify(maskForLogs(capturedJsonResponse))}`;
       }
 
       log(logLine);

@@ -72,6 +72,7 @@ export interface IStorage {
 
   findOrderByEupagoReference(reference: string, entity?: string): Promise<Order | undefined>;
   findOrderByEupagoTransactionId(transactionId: string): Promise<Order | undefined>;
+  findOrderByEupagoIdentifier(identifier: string): Promise<Order | undefined>;
 
   // PayPal settings operations
   getPaypalSettings(): Promise<PaypalSettings | undefined>;
@@ -403,6 +404,17 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(orders)
       .where(sql`${orders.paymentMetadata} -> 'eupago' ->> 'transactionId' = ${trid}`);
+    return order;
+  }
+
+  async findOrderByEupagoIdentifier(identifier: string): Promise<Order | undefined> {
+    const id = identifier.trim();
+    if (!id) return undefined;
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(sql`${orders.paymentMetadata} -> 'eupago' ->> 'identifier' = ${id}`);
     return order;
   }
 

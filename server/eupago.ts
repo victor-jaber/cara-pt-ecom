@@ -423,7 +423,7 @@ function getParam(req: Request, key: string): string | undefined {
 export async function handleEupagoWebhook(req: Request, res: Response) {
   try {
     const settings = await storage.getEupagoSettings();
-    const apiKey = settings?.apiKey;
+    const apiKey = typeof settings?.apiKey === "string" ? settings.apiKey.trim() : "";
 
     // Webhook V1.0 sends query params.
     const chaveApi = getParam(req, "chave_api") || getParam(req, "chave");
@@ -435,7 +435,8 @@ export async function handleEupagoWebhook(req: Request, res: Response) {
     const valor = getParam(req, "valor");
     const data = getParam(req, "data");
 
-    if (!apiKey || !chaveApi || chaveApi !== apiKey) {
+    const chaveApiTrim = typeof chaveApi === "string" ? chaveApi.trim() : "";
+    if (!apiKey || !chaveApiTrim || chaveApiTrim !== apiKey) {
       console.warn("EuPago webhook received with invalid api key");
       return res.status(200).send("OK");
     }
@@ -446,6 +447,9 @@ export async function handleEupagoWebhook(req: Request, res: Response) {
     }
     if (!order && transacao) {
       order = await storage.findOrderByEupagoTransactionId(transacao);
+    }
+    if (!order && identificador) {
+      order = await storage.findOrderByEupagoIdentifier(identificador);
     }
 
     if (!order) {

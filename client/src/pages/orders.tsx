@@ -22,6 +22,19 @@ export default function Orders() {
   const { data: orders = [], isLoading } = useQuery<OrderWithItems[]>({
     queryKey: [ordersEndpoint],
     enabled: !!user,
+    staleTime: 0,
+    refetchInterval: (query) => {
+      const list: any[] = (query as any)?.state?.data;
+      const hasPendingEupago = Array.isArray(list)
+        ? list.some(
+            (o) =>
+              (o?.paymentMethod === "eupago_multibanco" || o?.paymentMethod === "eupago_mbway") &&
+              o?.paymentStatus !== "completed" &&
+              o?.status !== "confirmed",
+          )
+        : false;
+      return hasPendingEupago ? 5000 : false;
+    },
   });
 
   const getStatusBadge = (status: string) => {
