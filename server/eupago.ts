@@ -80,7 +80,12 @@ async function eupagoPostJson(options: {
     "content-type": "application/json",
   };
   if (options.useApiKeyHeader) {
+    // EuPago APIs are inconsistent across endpoints/versions; send the API key
+    // using a few common header conventions for maximum compatibility.
     headers["ApiKey"] = options.apiKey;
+    headers["apikey"] = options.apiKey;
+    headers["X-API-KEY"] = options.apiKey;
+    headers["Authorization"] = `ApiKey ${options.apiKey}`;
   }
 
   const response = await fetch(url, {
@@ -320,6 +325,9 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
     // NOTE: EuPago documentation for MBWay has nested objects; we send a conservative payload
     // and store the raw response for compatibility.
     const eupagoBody = {
+      // Some EuPago endpoints require the API key in the JSON payload (like the REST API ones).
+      // Including it here avoids 401 APIKEY_MISSING responses on certain environments.
+      chave: apiKey,
       payment: {
         identifier,
         title: `Pedido ${identifier}`,
