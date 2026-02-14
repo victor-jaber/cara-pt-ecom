@@ -353,12 +353,19 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
 
     const restApiBody = {
       chave: apiKey,
+      // REST API endpoints commonly accept/expect flat params.
       valor: Number(total.toFixed(2)),
       id: identifier,
       // Common fields used by EuPago REST API docs/examples
       telemovel: phoneNormalized,
       telefone: phoneNormalized,
       email: user.email,
+      nome: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      descricao: `Pedido ${identifier}`,
+      // Some endpoints use these alternative names
+      customer: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      customer_name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+      customer_email: user.email,
     };
 
     const v102Url = "https://sandbox.eupago.pt/api/v1.02/mbway/create";
@@ -370,9 +377,18 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       : await eupagoPostJson({ url: v102Url, apiKey, mode: settings.mode, body: v102Body, useApiKeyHeader: true });
 
     const firstCode = asString((firstAttempt.data as any)?.code) || "";
+    const firstMessage = extractEupagoErrorMessage(firstAttempt.data, "");
+    const firstSuccessful =
+      firstAttempt.status >= 200 && firstAttempt.status < 300 && eupagoWasSuccessful(firstAttempt.data);
+    const missingRequiredParams = /Faltam\s+par[âa]metros\s+obrigat[óo]rios/i.test(firstMessage);
+
     const shouldFallback =
-      (firstAttempt.status === 401 && firstCode === "APIKEY_MISSING") ||
-      (firstAttempt.status === 400 && firstCode === "CUSTOMERPHONE_MISSING");
+      !firstSuccessful &&
+      (
+        missingRequiredParams ||
+        (firstAttempt.status === 401 && firstCode === "APIKEY_MISSING") ||
+        (firstAttempt.status === 400 && firstCode === "CUSTOMERPHONE_MISSING")
+      );
 
     const eupagoResponse = shouldFallback
       ? (primary === "rest"
