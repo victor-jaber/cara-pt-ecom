@@ -1116,7 +1116,7 @@ export async function registerRoutes(
           isEnabled: !!eupago.isEnabled,
         };
         if (eupago.apiKey && eupago.apiKey !== "********") {
-          updateData.apiKey = eupago.apiKey;
+          updateData.apiKey = String(eupago.apiKey).trim();
         } else if (currentEupago?.apiKey) {
           updateData.apiKey = currentEupago.apiKey;
         }

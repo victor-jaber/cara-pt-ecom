@@ -150,7 +150,8 @@ async function snapshotCartOrItems(options: {
 export async function createEupagoMultibancoOrder(req: Request, res: Response) {
   try {
     const settings = await storage.getEupagoSettings();
-    if (!settings || !settings.isEnabled || !settings.apiKey) {
+    const apiKey = (settings?.apiKey || "").trim();
+    if (!settings || !settings.isEnabled || !apiKey || apiKey === "********") {
       return res.status(400).json({ message: "EuPago is not configured or enabled" });
     }
 
@@ -183,7 +184,7 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
     const identifier = randomUUID();
 
     const eupagoBody = {
-      chave: settings.apiKey,
+      chave: apiKey,
       valor: Number(total.toFixed(2)),
       id: identifier,
       per_dup: 0,
@@ -191,7 +192,7 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
 
     const eupagoResponse = await eupagoPostJson({
       url: "https://sandbox.eupago.pt/clientes/rest_api/multibanco/create",
-      apiKey: settings.apiKey,
+      apiKey,
       mode: settings.mode,
       body: eupagoBody,
       useApiKeyHeader: true,
@@ -269,7 +270,8 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
 export async function createEupagoMbwayOrder(req: Request, res: Response) {
   try {
     const settings = await storage.getEupagoSettings();
-    if (!settings || !settings.isEnabled || !settings.apiKey) {
+    const apiKey = (settings?.apiKey || "").trim();
+    if (!settings || !settings.isEnabled || !apiKey || apiKey === "********") {
       return res.status(400).json({ message: "EuPago is not configured or enabled" });
     }
 
@@ -334,7 +336,7 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
 
     const eupagoResponse = await eupagoPostJson({
       url: "https://sandbox.eupago.pt/api/v1.02/mbway/create",
-      apiKey: settings.apiKey,
+      apiKey,
       mode: settings.mode,
       body: eupagoBody,
       useApiKeyHeader: true,
