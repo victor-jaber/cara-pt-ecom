@@ -87,6 +87,22 @@ function buildOption(partial: {
 export function getHardcodedShippingOptions(ctx: ShippingContext): ShippingOption[] {
   const { countryCode, region, subtotal } = ctx;
 
+  const cc = (countryCode || "").toUpperCase();
+
+  // Brazil: always free shipping (testing convenience)
+  if (cc === "BR") {
+    return [
+      buildOption({
+        id: "free-shipping",
+        name: "Envio Grátis",
+        description: "Disponível para entregas no Brasil",
+        price: "0.00",
+        estimatedDays: "",
+        sortOrder: -10,
+      }),
+    ];
+  }
+
   const options: ShippingOption[] = [];
 
   // 1) Free shipping for all above €500
@@ -118,7 +134,7 @@ export function getHardcodedShippingOptions(ctx: ShippingContext): ShippingOptio
   }
 
   // 3) Portugal Islands
-  if ((countryCode || "").toUpperCase() === "PT" && isPortugalIslands(region)) {
+  if (cc === "PT" && isPortugalIslands(region)) {
     options.push(
       buildOption({
         id: "pt-islands",
