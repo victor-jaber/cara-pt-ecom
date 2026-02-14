@@ -5,7 +5,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
 import { clearStoredAuthUser } from "@/lib/authPersistence";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Select,
   SelectContent,
@@ -137,8 +136,6 @@ export function Header() {
               </>
             )}
           </div>
-
-          <ThemeToggle />
 
           <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
             <SelectTrigger className="w-[70px] h-8 gap-1 border-none bg-transparent focus:ring-0 px-2" data-testid="language-selector">
