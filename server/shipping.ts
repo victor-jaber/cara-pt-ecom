@@ -89,13 +89,13 @@ export function getHardcodedShippingOptions(ctx: ShippingContext): ShippingOptio
 
   const cc = (countryCode || "").toUpperCase();
 
-  // Brazil: always free shipping (testing convenience)
-  if (cc === "BR") {
+  // Brazil/Portugal: always free shipping (no minimum)
+  if (cc === "BR" || cc === "PT") {
     return [
       buildOption({
         id: "free-shipping",
         name: "Envio Grátis",
-        description: "Disponível para entregas no Brasil",
+        description: cc === "BR" ? "Disponível para entregas no Brasil" : "Disponível para entregas em Portugal",
         price: "0.00",
         estimatedDays: "",
         sortOrder: -10,
