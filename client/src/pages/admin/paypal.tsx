@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -124,6 +124,12 @@ export default function AdminPaypal() {
 
   const { data: settings, isLoading } = useQuery<AdminPaymentMethodsResponse>({
     queryKey: ["/api/admin/payment-methods"],
+    // Do not auto-refetch in the background, otherwise secrets get reset to masked values
+    // and the eye toggle never reveals what the admin just typed.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   const form = useForm<PaymentMethodsForm>({
@@ -133,28 +139,61 @@ export default function AdminPaypal() {
       stripe: { enabled: false, mode: "test", publishableKey: "", secretKey: "" },
       eupago: { enabled: false, mode: "sandbox", apiKey: "" },
     },
-    values: settings
-      ? {
-          paypal: {
-            enabled: settings.paypal.isEnabled,
-            mode: settings.paypal.mode,
-            clientId: settings.paypal.clientId || "",
-            clientSecret: settings.paypal.hasSecret ? masked : "",
-          },
-          stripe: {
-            enabled: settings.stripe.isEnabled,
-            mode: settings.stripe.mode,
-            publishableKey: settings.stripe.publishableKey || "",
-            secretKey: settings.stripe.hasSecret ? masked : "",
-          },
-          eupago: {
-            enabled: settings.eupago.isEnabled,
-            mode: settings.eupago.mode,
-            apiKey: settings.eupago.hasSecret ? masked : "",
-          },
-        }
-      : undefined,
   });
+
+  const didInitFromServer = useRef(false);
+
+  const revealedRef = useRef<AdminPaymentMethodsResponse | null>(null);
+  const revealInFlightRef = useRef<Promise<AdminPaymentMethodsResponse> | null>(null);
+
+  const ensureRevealed = async (): Promise<AdminPaymentMethodsResponse> => {
+    if (revealedRef.current) return revealedRef.current;
+    if (revealInFlightRef.current) return revealInFlightRef.current;
+
+    const p = (async () => {
+      // Add a nonce to avoid any intermediary caching of a sensitive response.
+      const res = await apiRequest("GET", `/api/admin/payment-methods?reveal=1&_=${Date.now()}`);
+      const data = (await res.json()) as AdminPaymentMethodsResponse;
+      revealedRef.current = data;
+      return data;
+    })();
+
+    revealInFlightRef.current = p;
+    try {
+      return await p;
+    } finally {
+      revealInFlightRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (!settings) return;
+
+    // Only initialize once (or when the form isn't dirty), so background refetches
+    // don't overwrite typed secrets with masked placeholders.
+    if (didInitFromServer.current && form.formState.isDirty) return;
+
+    form.reset({
+      paypal: {
+        enabled: settings.paypal.isEnabled,
+        mode: settings.paypal.mode,
+        clientId: settings.paypal.clientId || "",
+        clientSecret: settings.paypal.hasSecret ? masked : "",
+      },
+      stripe: {
+        enabled: settings.stripe.isEnabled,
+        mode: settings.stripe.mode,
+        publishableKey: settings.stripe.publishableKey || "",
+        secretKey: settings.stripe.hasSecret ? masked : "",
+      },
+      eupago: {
+        enabled: settings.eupago.isEnabled,
+        mode: settings.eupago.mode,
+        apiKey: settings.eupago.hasSecret ? masked : "",
+      },
+    });
+    didInitFromServer.current = true;
+  }, [settings, form]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: PaymentMethodsForm) => {
@@ -180,7 +219,6 @@ export default function AdminPaypal() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/payment-methods"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payment-methods/setup"] });
       queryClient.invalidateQueries({ queryKey: ["/api/paypal/setup"] });
       toast({
@@ -320,7 +358,29 @@ export default function AdminPaypal() {
                           </FormControl>
                           <button
                             type="button"
-                            onClick={() => setShowPaypalSecret((v) => !v)}
+                            onClick={async () => {
+                              try {
+                                if (showPaypalSecret) {
+                                  setShowPaypalSecret(false);
+                                  return;
+                                }
+                                if (field.value === masked) {
+                                  const revealed = await ensureRevealed();
+                                  form.setValue(
+                                    "paypal.clientSecret",
+                                    revealed.paypal.clientSecret || "",
+                                    { shouldDirty: false },
+                                  );
+                                }
+                                setShowPaypalSecret(true);
+                              } catch (e: any) {
+                                toast({
+                                  title: "Não foi possível revelar",
+                                  description: e?.message || "Falha ao buscar o segredo.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                             aria-label={showPaypalSecret ? "Ocultar" : "Mostrar"}
                           >
@@ -410,7 +470,29 @@ export default function AdminPaypal() {
                           </FormControl>
                           <button
                             type="button"
-                            onClick={() => setShowStripeSecret((v) => !v)}
+                            onClick={async () => {
+                              try {
+                                if (showStripeSecret) {
+                                  setShowStripeSecret(false);
+                                  return;
+                                }
+                                if (field.value === masked) {
+                                  const revealed = await ensureRevealed();
+                                  form.setValue(
+                                    "stripe.secretKey",
+                                    revealed.stripe.secretKey || "",
+                                    { shouldDirty: false },
+                                  );
+                                }
+                                setShowStripeSecret(true);
+                              } catch (e: any) {
+                                toast({
+                                  title: "Não foi possível revelar",
+                                  description: e?.message || "Falha ao buscar o segredo.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                             aria-label={showStripeSecret ? "Ocultar" : "Mostrar"}
                           >
@@ -430,7 +512,7 @@ export default function AdminPaypal() {
                 <CardHeader>
                   <CardTitle>EuPago (Portugal)</CardTitle>
                   <CardDescription>
-                    EuPago só aparece no checkout para clientes em Portugal (Multibanco e MBWay).
+                    EuPago aparece no checkout para clientes em Portugal e Brasil (Multibanco e MBWay).
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -488,7 +570,29 @@ export default function AdminPaypal() {
                           </FormControl>
                           <button
                             type="button"
-                            onClick={() => setShowEupagoKey((v) => !v)}
+                            onClick={async () => {
+                              try {
+                                if (showEupagoKey) {
+                                  setShowEupagoKey(false);
+                                  return;
+                                }
+                                if (field.value === masked) {
+                                  const revealed = await ensureRevealed();
+                                  form.setValue(
+                                    "eupago.apiKey",
+                                    revealed.eupago.apiKey || "",
+                                    { shouldDirty: false },
+                                  );
+                                }
+                                setShowEupagoKey(true);
+                              } catch (e: any) {
+                                toast({
+                                  title: "Não foi possível revelar",
+                                  description: e?.message || "Falha ao buscar o segredo.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                             aria-label={showEupagoKey ? "Ocultar" : "Mostrar"}
                           >

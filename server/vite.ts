@@ -5,10 +5,34 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { createRequire } from "module";
 
 const viteLogger = createLogger();
 
 export async function setupVite(server: Server, app: Express) {
+  const require = createRequire(import.meta.url);
+
+  const viteClientEnvDir = (() => {
+    try {
+      const envPath = require.resolve("vite/dist/client/env.mjs");
+      return path.dirname(envPath);
+    } catch {
+      return null;
+    }
+  })();
+
+  const baseServerConfig = (viteConfig as any).server ?? {};
+  const baseFsConfig = (baseServerConfig as any).fs ?? {};
+  const baseAllow: string[] = Array.isArray(baseFsConfig.allow) ? baseFsConfig.allow : [];
+  const mergedAllow = Array.from(
+    new Set([
+      ...baseAllow,
+      // Always allow the current repo root (shared/ lives here)
+      path.resolve(import.meta.dirname, ".."),
+      ...(viteClientEnvDir ? [viteClientEnvDir] : []),
+    ]),
+  );
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server, path: "/vite-hmr" },
@@ -25,7 +49,14 @@ export async function setupVite(server: Server, app: Express) {
         process.exit(1);
       },
     },
-    server: serverOptions,
+    server: {
+      ...baseServerConfig,
+      ...serverOptions,
+      fs: {
+        ...baseFsConfig,
+        allow: mergedAllow,
+      },
+    },
     appType: "custom",
   });
 

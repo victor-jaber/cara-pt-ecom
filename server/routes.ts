@@ -1032,29 +1032,36 @@ export async function registerRoutes(
   });
 
   // Admin payment methods settings (unified)
-  app.get("/api/admin/payment-methods", isAuthenticated, isAdmin, async (_req, res) => {
+  app.get("/api/admin/payment-methods", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const paypal = await storage.getPaypalSettings();
       const stripe = await storage.getStripeSettings();
       const eupago = await storage.getEupagoSettings();
 
+      const reveal = String((req.query as any)?.reveal || "").toLowerCase();
+      const shouldReveal = reveal === "1" || reveal === "true" || reveal === "yes";
+
+      // Sensitive response (even masked); avoid intermediary caching.
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Pragma", "no-cache");
+
       res.json({
         paypal: {
           clientId: paypal?.clientId || "",
-          clientSecret: paypal?.clientSecret ? "********" : "",
+          clientSecret: shouldReveal ? (paypal?.clientSecret || "") : (paypal?.clientSecret ? "********" : ""),
           mode: paypal?.mode || "sandbox",
           isEnabled: paypal?.isEnabled || false,
           hasSecret: !!paypal?.clientSecret,
         },
         stripe: {
           publishableKey: stripe?.publishableKey || "",
-          secretKey: stripe?.secretKey ? "********" : "",
+          secretKey: shouldReveal ? (stripe?.secretKey || "") : (stripe?.secretKey ? "********" : ""),
           mode: stripe?.mode || "test",
           isEnabled: stripe?.isEnabled || false,
           hasSecret: !!stripe?.secretKey,
         },
         eupago: {
-          apiKey: eupago?.apiKey ? "********" : "",
+          apiKey: shouldReveal ? (eupago?.apiKey || "") : (eupago?.apiKey ? "********" : ""),
           mode: eupago?.mode || "sandbox",
           isEnabled: eupago?.isEnabled || false,
           hasSecret: !!eupago?.apiKey,

@@ -139,8 +139,9 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
     }
 
     const { shippingOptionId, countryCode, region, shippingAddress = "", notes = "", items } = (req.body || {}) as any;
-    if ((countryCode || "").toUpperCase() !== "PT") {
-      return res.status(400).json({ message: "EuPago is only available for Portugal" });
+    const cc = (countryCode || "").toUpperCase();
+    if (cc !== "PT" && cc !== "BR") {
+      return res.status(400).json({ message: "EuPago is only available for Portugal and Brazil" });
     }
 
     const { cartSnapshot, subtotal, source } = await snapshotCartOrItems({ userId: user.id, items });
@@ -230,7 +231,11 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Error creating EuPago Multibanco order:", error);
-    return res.status(500).json({ message: error?.message || "Failed to create Multibanco order" });
+    const msg = String(error?.message || "");
+    if (msg === "Cart is empty") {
+      return res.status(400).json({ message: msg });
+    }
+    return res.status(500).json({ message: msg || "Failed to create Multibanco order" });
   }
 }
 
@@ -256,8 +261,9 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       phone,
     } = (req.body || {}) as any;
 
-    if ((countryCode || "").toUpperCase() !== "PT") {
-      return res.status(400).json({ message: "EuPago is only available for Portugal" });
+    const cc = (countryCode || "").toUpperCase();
+    if (cc !== "PT" && cc !== "BR") {
+      return res.status(400).json({ message: "EuPago is only available for Portugal and Brazil" });
     }
 
     const phoneStr = typeof phone === "string" ? phone.trim() : "";
@@ -362,7 +368,11 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Error creating EuPago MBWay order:", error);
-    return res.status(500).json({ message: error?.message || "Failed to create MBWay order" });
+    const msg = String(error?.message || "");
+    if (msg === "Cart is empty") {
+      return res.status(400).json({ message: msg });
+    }
+    return res.status(500).json({ message: msg || "Failed to create MBWay order" });
   }
 }
 

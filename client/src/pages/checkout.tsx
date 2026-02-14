@@ -56,7 +56,7 @@ export default function Checkout() {
   const urlParams = new URLSearchParams(searchString);
   const shippingFromUrl = urlParams.get("shipping") || "";
   const [selectedShippingId, setSelectedShippingId] = useState<string>(shippingFromUrl);
-  const { isInternational, countryCode, region } = useLocationContext();
+  const { isInternational, isPortugal, countryCode, region } = useLocationContext();
   const guestCart = useGuestCart();
 
   const { data: paymentSetup } = useQuery<{
@@ -95,6 +95,10 @@ export default function Checkout() {
       }))
     : apiCartItems;
 
+  const eupagoItems = useGuestCartItems
+    ? cartItems.map((item) => ({ productId: item.productId || item.product.id, quantity: item.quantity }))
+    : undefined;
+
   const subtotal = cartItems.reduce(
     (acc, item) => acc + calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules),
     0,
@@ -112,12 +116,16 @@ export default function Checkout() {
     {
       value: "eupago_multibanco",
       label: "EuPago - Multibanco",
-      enabled: !!paymentSetup?.eupago?.enabled && (countryCode || "").toUpperCase() === "PT",
+      enabled:
+        !!paymentSetup?.eupago?.enabled &&
+        (["PT", "BR"].includes((countryCode || "").toUpperCase()) || isPortugal),
     },
     {
       value: "eupago_mbway",
       label: "EuPago - MBWay",
-      enabled: !!paymentSetup?.eupago?.enabled && (countryCode || "").toUpperCase() === "PT",
+      enabled:
+        !!paymentSetup?.eupago?.enabled &&
+        (["PT", "BR"].includes((countryCode || "").toUpperCase()) || isPortugal),
     },
   ];
 
@@ -636,6 +644,7 @@ export default function Checkout() {
               shippingOptionId={selectedShippingId || undefined}
               countryCode={countryCode}
               region={region}
+              items={eupagoItems}
               disabled={!canPay}
               onSuccess={() => {
                 toast({
@@ -661,6 +670,7 @@ export default function Checkout() {
               shippingOptionId={selectedShippingId || undefined}
               countryCode={countryCode}
               region={region}
+              items={eupagoItems}
               disabled={!canPay}
               onSuccess={() => {
                 toast({
