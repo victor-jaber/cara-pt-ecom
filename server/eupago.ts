@@ -328,6 +328,17 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       // Some EuPago endpoints require the API key in the JSON payload (like the REST API ones).
       // Including it here avoids 401 APIKEY_MISSING responses on certain environments.
       chave: apiKey,
+
+      // EuPago MB WAY payload varies across API versions; include the customer phone
+      // using a few common field names so the server always receives it.
+      customerPhone: phoneStr,
+      CustomerPhone: phoneStr,
+      phone: phoneStr,
+      telemovel: phoneStr,
+      telefone: phoneStr,
+      customerEmail: user.email,
+      email: user.email,
+
       payment: {
         identifier,
         title: `Pedido ${identifier}`,
@@ -352,12 +363,20 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
 
     if (eupagoResponse.status < 200 || eupagoResponse.status >= 300) {
       console.error("EuPago MBWay create failed:", eupagoResponse.status, eupagoResponse.rawText);
+      const code = asString((eupagoResponse.data as any)?.code) || "";
+      if (eupagoResponse.status === 400 && code === "CUSTOMERPHONE_MISSING") {
+        return res.status(400).json({ message: "Telefone MB WAY é obrigatório" });
+      }
       return res.status(502).json({ message: "Failed to create MBWay request" });
     }
 
     if (!eupagoWasSuccessful(eupagoResponse.data)) {
       const msg = extractEupagoErrorMessage(eupagoResponse.data, "EuPago rejected the request");
       console.error("EuPago MBWay create rejected:", eupagoResponse.status, eupagoResponse.rawText);
+      const code = asString((eupagoResponse.data as any)?.code) || "";
+      if (code === "CUSTOMERPHONE_MISSING") {
+        return res.status(400).json({ message: "Telefone MB WAY é obrigatório" });
+      }
       return res.status(502).json({ message: msg });
     }
 
