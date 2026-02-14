@@ -183,6 +183,14 @@ export default function Orders() {
                     <p className="text-sm text-muted-foreground">{order.notes}</p>
                   </div>
                 )}
+
+                <div className="pt-2">
+                  <Link href={`/pedido/${order.id}`}>
+                    <Button variant="outline" size="sm" data-testid={`button-order-details-${order.id}`}>
+                      Ver detalhes
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
