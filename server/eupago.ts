@@ -45,6 +45,27 @@ function extractEupagoRefs(payload: any): { entity?: string; reference?: string;
   return { entity, reference, transactionId };
 }
 
+function eupagoWasSuccessful(data: any): boolean {
+  if (!data || typeof data !== "object") return true;
+  const anyData = data as any;
+  if (typeof anyData.sucesso === "boolean") return anyData.sucesso;
+  if (typeof anyData.success === "boolean") return anyData.success;
+  if (typeof anyData.estado === "number") return anyData.estado >= 0;
+  if (typeof anyData.status === "number") return anyData.status >= 0;
+  return true;
+}
+
+function extractEupagoErrorMessage(data: any, fallback: string): string {
+  if (!data) return fallback;
+  if (typeof data === "string") return data.trim() || fallback;
+  if (typeof data !== "object") return fallback;
+
+  const anyData = data as any;
+  const resposta = asString(anyData.resposta) || asString(anyData.message) || asString(anyData.error);
+  if (resposta && resposta.trim()) return resposta.trim();
+  return fallback;
+}
+
 async function eupagoPostJson(options: {
   url: string;
   apiKey: string;
@@ -179,6 +200,12 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
     if (eupagoResponse.status < 200 || eupagoResponse.status >= 300) {
       console.error("EuPago Multibanco create failed:", eupagoResponse.status, eupagoResponse.rawText);
       return res.status(502).json({ message: "Failed to create Multibanco reference" });
+    }
+
+    if (!eupagoWasSuccessful(eupagoResponse.data)) {
+      const msg = extractEupagoErrorMessage(eupagoResponse.data, "EuPago rejected the request");
+      console.error("EuPago Multibanco create rejected:", eupagoResponse.status, eupagoResponse.rawText);
+      return res.status(502).json({ message: msg });
     }
 
     const refs = extractEupagoRefs(eupagoResponse.data);
@@ -316,6 +343,12 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
     if (eupagoResponse.status < 200 || eupagoResponse.status >= 300) {
       console.error("EuPago MBWay create failed:", eupagoResponse.status, eupagoResponse.rawText);
       return res.status(502).json({ message: "Failed to create MBWay request" });
+    }
+
+    if (!eupagoWasSuccessful(eupagoResponse.data)) {
+      const msg = extractEupagoErrorMessage(eupagoResponse.data, "EuPago rejected the request");
+      console.error("EuPago MBWay create rejected:", eupagoResponse.status, eupagoResponse.rawText);
+      return res.status(502).json({ message: msg });
     }
 
     const refs = extractEupagoRefs(eupagoResponse.data);
