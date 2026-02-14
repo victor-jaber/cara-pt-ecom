@@ -314,8 +314,8 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       return res.status(400).json({ message: "Número MB WAY inválido. Use 9 dígitos (ex.: 9XXXXXXXX)" });
     }
 
-    // EuPago MB WAY APIs commonly expect country prefix; send 351+digits.
-    const phoneForGateway = `351${phoneNormalized}`;
+    // MB WAY PT phone expected as 9 digits in most EuPago deployments.
+    const phoneForGateway = phoneNormalized;
 
     const { cartSnapshot, subtotal, source } = await snapshotCartOrItems({ userId: user.id, items });
 
