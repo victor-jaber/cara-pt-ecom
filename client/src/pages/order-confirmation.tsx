@@ -86,6 +86,8 @@ export default function OrderConfirmation() {
   const isEupago =
     (order as any)?.paymentMethod === "eupago_multibanco" || (order as any)?.paymentMethod === "eupago_mbway";
 
+  const isConfirmed = order?.status === "confirmed" || (order as any)?.paymentStatus === "completed";
+
   const orderShortId = order?.id ? order.id.slice(-8) : "";
 
   const copyToClipboard = async (label: string, value: string) => {
@@ -162,9 +164,12 @@ export default function OrderConfirmation() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Pedido {orderShortId ? `#${orderShortId}` : ""}</h1>
+          <h1 className="text-3xl font-bold">
+            {isConfirmed ? "Pedido Confirmado com Sucesso" : `Pedido ${orderShortId ? `#${orderShortId}` : ""}`}
+          </h1>
           <div className="text-sm text-muted-foreground">
-            {order.createdAt ? new Date(order.createdAt).toLocaleString("pt-PT") : ""}
+            {isConfirmed && orderShortId ? `Referência: #${orderShortId}` : ""}
+            {order.createdAt ? `${isConfirmed && orderShortId ? " • " : ""}${new Date(order.createdAt).toLocaleString("pt-PT")}` : ""}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -183,118 +188,136 @@ export default function OrderConfirmation() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Próximos passos</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!isEupago && (
+        {isConfirmed ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pedido Confirmado com Sucesso</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Este pedido não foi criado via EuPago.
+                O seu pedido foi confirmado e está a ser preparado. Não é necessário realizar mais nenhuma ação de pagamento.
               </div>
-            )}
 
-            {(order as any).paymentMethod === "eupago_multibanco" && (
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground">
-                  1) Abra o seu homebanking/app do banco e escolha <b>Pagamento de Serviços (Multibanco)</b>.<br />
-                  2) Insira <b>Entidade</b> e <b>Referência</b> exatamente como abaixo.<br />
-                  3) Confirme o pagamento. O status será atualizado automaticamente.
-                </div>
-
-                <div className="rounded-lg border p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Entidade</div>
-                      <div className="font-semibold">{eupago?.entity ? String(eupago.entity) : "-"}</div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!eupago?.entity}
-                      onClick={() => copyToClipboard("Entidade", String(eupago.entity))}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Referência</div>
-                      <div className="font-semibold">{eupago?.reference ? String(eupago.reference) : "-"}</div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!eupago?.reference}
-                      onClick={() => copyToClipboard("Referência", String(eupago.reference))}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-muted-foreground">Valor</div>
-                    <div className="font-semibold">{formatCurrencyEUR(order.total)}</div>
-                  </div>
-                </div>
+              <div className="flex gap-3">
+                <Link href="/meus-pedidos">
+                  <Button>Ver meus pedidos</Button>
+                </Link>
+                <Link href="/produtos">
+                  <Button variant="outline">Continuar a comprar</Button>
+                </Link>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Próximos passos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!isEupago && <div className="text-sm text-muted-foreground">Este pedido não foi criado via EuPago.</div>}
 
-            {(order as any).paymentMethod === "eupago_mbway" && (
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground">
-                  1) Abra a app <b>MB WAY</b> no seu telemóvel.<br />
-                  2) Confirme o pagamento pendente para este pedido.<br />
-                  3) Após confirmar, o status será atualizado automaticamente.
-                </div>
+              {(order as any).paymentMethod === "eupago_multibanco" && (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    1) Abra o seu homebanking/app do banco e escolha <b>Pagamento de Serviços (Multibanco)</b>.<br />
+                    2) Insira <b>Entidade</b> e <b>Referência</b> exatamente como abaixo.<br />
+                    3) Confirme o pagamento. O status será atualizado automaticamente.
+                  </div>
 
-                <div className="rounded-lg border p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Telefone</div>
-                      <div className="font-semibold">{eupago?.phone ? String(eupago.phone) : "-"}</div>
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Entidade</div>
+                        <div className="font-semibold">{eupago?.entity ? String(eupago.entity) : "-"}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!eupago?.entity}
+                        onClick={() => copyToClipboard("Entidade", String(eupago.entity))}
+                      >
+                        Copiar
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!eupago?.phone}
-                      onClick={() => copyToClipboard("Telefone", String(eupago.phone))}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
 
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">TRID / Transação</div>
-                      <div className="font-semibold">{eupago?.transactionId ? String(eupago.transactionId) : "-"}</div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Referência</div>
+                        <div className="font-semibold">{eupago?.reference ? String(eupago.reference) : "-"}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!eupago?.reference}
+                        onClick={() => copyToClipboard("Referência", String(eupago.reference))}
+                      >
+                        Copiar
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!eupago?.transactionId}
-                      onClick={() => copyToClipboard("TRID", String(eupago.transactionId))}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground">Valor</div>
-                    <div className="font-semibold">{formatCurrencyEUR(order.total)}</div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Valor</div>
+                      <div className="font-semibold">{formatCurrencyEUR(order.total)}</div>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {(order as any).paymentMethod === "eupago_mbway" && (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    1) Abra a app <b>MB WAY</b> no seu telemóvel.<br />
+                    2) Confirme o pagamento pendente para este pedido.<br />
+                    3) Após confirmar, o status será atualizado automaticamente.
+                  </div>
+
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Telefone</div>
+                        <div className="font-semibold">{eupago?.phone ? String(eupago.phone) : "-"}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!eupago?.phone}
+                        onClick={() => copyToClipboard("Telefone", String(eupago.phone))}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">TRID / Transação</div>
+                        <div className="font-semibold">{eupago?.transactionId ? String(eupago.transactionId) : "-"}</div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!eupago?.transactionId}
+                        onClick={() => copyToClipboard("TRID", String(eupago.transactionId))}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-muted-foreground">Valor</div>
+                      <div className="font-semibold">{formatCurrencyEUR(order.total)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Link href="/meus-pedidos">
+                  <Button variant="outline">Meus pedidos</Button>
+                </Link>
               </div>
-            )}
-
-            <div className="flex gap-3">
-              <Link href="/meus-pedidos">
-                <Button variant="outline">Meus pedidos</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
