@@ -309,6 +309,14 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
     const phoneNormalized =
       phoneDigits.length === 12 && phoneDigits.startsWith("351") ? phoneDigits.slice(3) : phoneDigits;
 
+    // MB WAY PT numbers are 9 digits. Users sometimes enter +351/351 prefix; we accept it and normalize.
+    if (phoneNormalized.length !== 9) {
+      return res.status(400).json({ message: "Número MB WAY inválido. Use 9 dígitos (ex.: 9XXXXXXXX)" });
+    }
+
+    // EuPago MB WAY APIs commonly expect country prefix; send 351+digits.
+    const phoneForGateway = `351${phoneNormalized}`;
+
     const { cartSnapshot, subtotal, source } = await snapshotCartOrItems({ userId: user.id, items });
 
     const availableShippingOptions = getHardcodedShippingOptions({ countryCode, region, subtotal });
@@ -326,16 +334,14 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
 
     const identifier = randomUUID();
 
-    // EuPago MB WAY has multiple API variants in the wild. We'll attempt one, and
-    // if the gateway complains about missing auth/phone, fall back to the REST API variant.
     const v102Body = {
-      chave: apiKey,
-      customerPhone: phoneNormalized,
-      CustomerPhone: phoneNormalized,
-      phone: phoneNormalized,
-      telemovel: phoneNormalized,
-      telefone: phoneNormalized,
+      customerPhone: phoneForGateway,
+      CustomerPhone: phoneForGateway,
+      phone: phoneForGateway,
+      telemovel: phoneForGateway,
+      telefone: phoneForGateway,
       customerEmail: user.email,
+      CustomerEmail: user.email,
       email: user.email,
       payment: {
         identifier,
@@ -346,60 +352,37 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
         },
       },
       customer: {
-        phone: phoneNormalized,
+        // Keep multiple aliases; some EuPago deployments validate specific keys.
+        customerPhone: phoneForGateway,
+        CustomerPhone: phoneForGateway,
+        phone: phoneForGateway,
+        phoneNumber: phoneForGateway,
+        mobile: phoneForGateway,
+        customerEmail: user.email,
+        CustomerEmail: user.email,
         email: user.email,
       },
     };
 
-    const restApiBody = {
-      chave: apiKey,
-      // REST API endpoints commonly accept/expect flat params.
-      valor: Number(total.toFixed(2)),
-      id: identifier,
-      // Common fields used by EuPago REST API docs/examples
-      telemovel: phoneNormalized,
-      telefone: phoneNormalized,
-      email: user.email,
-      nome: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
-      descricao: `Pedido ${identifier}`,
-      // Some endpoints use these alternative names
-      customer: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
-      customer_name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
-      customer_email: user.email,
-    };
-
-    const v102Url = "https://sandbox.eupago.pt/api/v1.02/mbway/create";
-    const restApiUrl = "https://sandbox.eupago.pt/clientes/rest_api/mbway/create";
-
-    const primary = settings.mode === "live" ? "rest" : "v102";
-    const firstAttempt = primary === "rest"
-      ? await eupagoPostJson({ url: restApiUrl, apiKey, mode: settings.mode, body: restApiBody, useApiKeyHeader: true })
-      : await eupagoPostJson({ url: v102Url, apiKey, mode: settings.mode, body: v102Body, useApiKeyHeader: true });
-
-    const firstCode = asString((firstAttempt.data as any)?.code) || "";
-    const firstMessage = extractEupagoErrorMessage(firstAttempt.data, "");
-    const firstSuccessful =
-      firstAttempt.status >= 200 && firstAttempt.status < 300 && eupagoWasSuccessful(firstAttempt.data);
-    const missingRequiredParams = /Faltam\s+par[âa]metros\s+obrigat[óo]rios/i.test(firstMessage);
-
-    const shouldFallback =
-      !firstSuccessful &&
-      (
-        missingRequiredParams ||
-        (firstAttempt.status === 401 && firstCode === "APIKEY_MISSING") ||
-        (firstAttempt.status === 400 && firstCode === "CUSTOMERPHONE_MISSING")
-      );
-
-    const eupagoResponse = shouldFallback
-      ? (primary === "rest"
-          ? await eupagoPostJson({ url: v102Url, apiKey, mode: settings.mode, body: v102Body, useApiKeyHeader: true })
-          : await eupagoPostJson({ url: restApiUrl, apiKey, mode: settings.mode, body: restApiBody, useApiKeyHeader: true }))
-      : firstAttempt;
+    // Official docs: https://eupago.readme.io/reference/mbway
+    // Uses ApiKey authentication on request header.
+    const eupagoResponse = await eupagoPostJson({
+      url: "https://sandbox.eupago.pt/api/v1.02/mbway/create",
+      apiKey,
+      mode: settings.mode,
+      body: v102Body,
+      useApiKeyHeader: true,
+    });
 
     if (eupagoResponse.status < 200 || eupagoResponse.status >= 300) {
       console.error("EuPago MBWay create failed:", eupagoResponse.status, eupagoResponse.rawText);
       const code = asString((eupagoResponse.data as any)?.code) || "";
       if (eupagoResponse.status === 400 && code === "CUSTOMERPHONE_MISSING") {
+        console.error("EuPago MBWay payload keys:", {
+          topLevel: Object.keys(v102Body),
+          customer: Object.keys((v102Body as any).customer || {}),
+          payment: Object.keys((v102Body as any).payment || {}),
+        });
         return res.status(400).json({ message: "Telefone MB WAY é obrigatório" });
       }
       return res.status(502).json({ message: "Failed to create MBWay request" });
