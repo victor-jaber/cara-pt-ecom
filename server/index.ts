@@ -79,11 +79,18 @@ app.use((req, res, next) => {
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const status = err?.status || err?.statusCode || 500;
+    const message = err?.message || "Internal Server Error";
+
+    // Avoid crashing the process after we send a response.
+    // Crashing mid-request can lead to truncated static assets (e.g. "Unexpected end of script").
+    console.error(err);
+
+    if (res.headersSent) {
+      return;
+    }
 
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
