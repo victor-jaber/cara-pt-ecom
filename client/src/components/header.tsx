@@ -84,20 +84,20 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-24 items-center justify-between gap-2 md:gap-4 px-4">
+      <div className="container mx-auto flex h-20 items-center justify-between gap-2 md:gap-4 px-4">
         <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
           <div className="flex items-center gap-3 flex-shrink-0">
             <Link href="/" data-testid="link-home" className="flex items-center">
               <img src="/logo.webp" alt="CARA" className="h-10 md:h-12" />
             </Link>
-            <span className="text-border h-12 border-l" />
+            <span className="text-border h-8 border-l" />
             <a
               href="https://promipharm.com"
               data-testid="link-promipharm"
               className="flex items-center"
               aria-label="PROMIPHARM"
             >
-              <img src="/LOGO%20PRETO%20SEM%20FUNDO.png" alt="PROMIPHARM" className="h-14 md:h-16 dark:invert" />
+              <img src="/LOGO%20PRETO%20SEM%20FUNDO.png" alt="PROMIPHARM" className="h-10 md:h-12 dark:invert" />
             </a>
           </div>
 
