@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -73,9 +73,9 @@ export function VerificationStep({ email, type, onVerified, onBack }: Verificati
     });
 
     // Auto-send code on mount
-    useState(() => {
+    useEffect(() => {
         sendCodeMutation.mutate();
-    });
+    }, []);
 
     const handleCodeComplete = (completedCode: string) => {
         verifyCodeMutation.mutate(completedCode);
