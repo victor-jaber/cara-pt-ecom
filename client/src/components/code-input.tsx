@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from "react";
-import { Input } from "@/components/ui/input";
 
 interface CodeInputProps {
     length?: number;
@@ -41,8 +40,8 @@ export function CodeInput({
         }
 
         // Call on complete
-        if (newValue.length === length && onComplete) {
-            onComplete(newValue);
+        if (newValue.replace(/\s/g, '').length === length && onComplete) {
+            onComplete(newValue.replace(/\s/g, ''));
         }
     };
 
@@ -70,7 +69,7 @@ export function CodeInput({
     return (
         <div className="flex gap-2 justify-center">
             {digits.map((digit, index) => (
-                <Input
+                <input
                     key={index}
                     ref={(el) => (inputRefs.current[index] = el)}
                     type="text"
@@ -80,8 +79,8 @@ export function CodeInput({
                     onChange={(e) => handleChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
-                    className={`w-12 h-14 text-center text-2xl font-bold ${error ? "border-red-500" : ""
-                        }`}
+                    className={`w-12 h-14 text-center text-2xl font-bold rounded-md border ${error ? "border-red-500" : "border-input"
+                        } bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                     autoFocus={index === 0}
                 />
             ))}
