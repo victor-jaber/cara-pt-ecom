@@ -33,7 +33,7 @@ import { pt } from "date-fns/locale";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendente",
-  confirmed: "Confirmado",
+  confirmed: "Pagamento Confirmado",
   shipped: "Enviado",
   delivered: "Entregue",
   cancelled: "Cancelado",

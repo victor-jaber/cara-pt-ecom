@@ -213,7 +213,7 @@ export default function Home() {
                       }
                     >
                       {order.status === "pending" && "Pendente"}
-                      {order.status === "confirmed" && "Confirmado"}
+                      {order.status === "confirmed" && "Pagamento Confirmado"}
                       {order.status === "shipped" && "Enviado"}
                       {order.status === "delivered" && "Entregue"}
                       {order.status === "cancelled" && "Cancelado"}

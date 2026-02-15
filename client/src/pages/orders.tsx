@@ -40,7 +40,7 @@ export default function Orders() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
       pending: { label: "Pendente", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
-      confirmed: { label: "Confirmado", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
+      confirmed: { label: "Pagamento Confirmado", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
       shipped: { label: "Enviado", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
       delivered: { label: "Entregue", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" },
       cancelled: { label: "Cancelado", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },

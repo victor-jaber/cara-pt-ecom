@@ -97,7 +97,7 @@ export default function AdminDashboard() {
     };
     return [
       { name: "Pendente", value: statusCounts.pending, color: "hsl(var(--chart-3))" },
-      { name: "Confirmado", value: statusCounts.confirmed, color: "hsl(var(--chart-1))" },
+      { name: "Pagamento Confirmado", value: statusCounts.confirmed, color: "hsl(var(--chart-1))" },
       { name: "Enviado", value: statusCounts.shipped, color: "hsl(var(--chart-2))" },
       { name: "Entregue", value: statusCounts.delivered, color: "hsl(var(--chart-4))" },
       { name: "Cancelado", value: statusCounts.cancelled, color: "hsl(var(--chart-5))" },
@@ -110,7 +110,7 @@ export default function AdminDashboard() {
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; icon: typeof CheckCircle2 }> = {
       pending: { label: "Pendente", variant: "secondary", icon: Clock },
-      confirmed: { label: "Confirmado", variant: "default", icon: CheckCircle2 },
+      confirmed: { label: "Pagamento Confirmado", variant: "default", icon: CheckCircle2 },
       shipped: { label: "Enviado", variant: "outline", icon: Truck },
       delivered: { label: "Entregue", variant: "default", icon: CheckCircle2 },
       cancelled: { label: "Cancelado", variant: "destructive", icon: XCircle },
