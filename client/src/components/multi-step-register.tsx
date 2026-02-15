@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tantml:query/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
