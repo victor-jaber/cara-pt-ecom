@@ -15,6 +15,10 @@ import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shippin
 import { sendEmail } from "./email";
 import { welcomeEmail, loginEmail, newDeviceEmail } from "./email-templates/auth";
 import { orderCreatedEmail, orderConfirmedEmail, orderShippedEmail, orderDeliveredEmail } from "./email-templates/orders";
+import { registerVerificationRoutes } from "./verification-routes";
+import { db as dbInstance } from "./db";
+import { emailVerifications } from "@shared/schema";
+
 
 export async function registerRoutes(
   httpServer: Server,
@@ -27,12 +31,15 @@ export async function registerRoutes(
   // Register endpoint - REQUIRES EMAIL VERIFICATION
   app.post("/api/auth/register", async (req, res) => {
     try {
-      // Extended schema to include verificationId
-      const extendedRegisterSchema = registerSchema.extend({
-        verificationId: z.string().min(1, "Verificação de email é obrigatória"),
-      });
+      // Validate basic registration data
+      const validated = registerSchema.parse(req.body);
       
-      const validated = extendedRegisterSchema.parse(req.body);
+      // Validate verificationId separately
+      if (!req.body.verificationId || typeof req.body.verificationId !== 'string') {
+        return res.status(400).json({ message: "Verificação de email é obrigatória" });
+      }
+      
+      const verificationId = req.body.verificationId as string;
 
       // Enforce terms acceptance - required for GDPR compliance
       if (!validated.acceptTerms) {
@@ -40,15 +47,12 @@ export async function registerRoutes(
       }
 
       // Verify email verification exists and is valid
-      const { getEmailVerification, markVerificationUsed } = await import("./email-verification");
-      const db = await import("./db");
-      const { emailVerifications } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
       
-      const [verification] = await db.db
+      const [verification] = await dbInstance
         .select()
         .from(emailVerifications)
-        .where(eq(emailVerifications.id, validated.verificationId));
+        .where(eq(emailVerifications.id, verificationId));
       
       if (!verification) {
         return res.status(400).json({ message: "Verificação de email inválida" });
@@ -62,12 +66,17 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Tipo de verificação inválido" });
       }
 
-      if (verification.verifiedAt) {
-        return res.status(400).json({ message: "Esta verificação já foi utilizada" });
+      if (verification.verifiedAt === null) {
+        return res.status(400).json({ message: "Email ainda não foi verificado" });
       }
 
       if (new Date() > new Date(verification.expiresAt)) {
         return res.status(400).json({ message: "Verificação expirada" });
+      }
+
+      // Check if verification was already used for registration
+      if (verification.userId !== null) {
+        return res.status(400).json({ message: "Esta verificação já foi utilizada" });
       }
 
       // Check if email already exists
@@ -95,8 +104,11 @@ export async function registerRoutes(
         role: "customer",
       });
 
-      // Mark verification as used
-      await markVerificationUsed(verification.id);
+      // Link verification to user
+      await dbInstance
+        .update(emailVerifications)
+        .set({ userId: user.id })
+        .where(eq(emailVerifications.id, verificationId));
 
       // Send welcome email (async, don't wait for it)
       sendEmail({
@@ -133,6 +145,7 @@ export async function registerRoutes(
       res.status(500).json({ message: "Falha ao registar utilizador" });
     }
   });
+
 
   // Login endpoint
   app.post("/api/auth/login", async (req, res) => {
