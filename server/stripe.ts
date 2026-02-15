@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
+import { sendEmail } from "./email";
+import { orderConfirmedEmail } from "./email-templates/orders";
 
 type PendingStripePayment = {
   userId: string;
@@ -213,6 +215,13 @@ export async function confirmStripePayment(req: Request, res: Response) {
     if (pending.source === "server_cart") {
       await storage.clearCart(user.id);
     }
+
+    // Send order confirmed email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${order.id} confirmado`,
+      html: orderConfirmedEmail(order, user.firstName),
+    }).catch(err => console.error('Failed to send order confirmed email:', err));
 
     return res.json({
       success: true,

@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import { randomUUID } from "crypto";
+import axios from "axios";
 import { storage } from "./storage";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
+import { sendEmail } from "./email";
+import { orderCreatedEmail, orderConfirmedEmail } from "./email-templates/orders";
 
 type EupagoMode = "sandbox" | "live";
 
@@ -72,8 +75,7 @@ async function eupagoPostJson(options: {
   mode: EupagoMode;
   body: any;
   useApiKeyHeader: boolean;
-}): Promise<{ status: number; data: any; rawText: string }>
-{
+}): Promise<{ status: number; data: any; rawText: string }> {
   const url = toEnvUrl(options.url, options.mode);
   const headers: Record<string, string> = {
     accept: "application/json",
@@ -110,8 +112,7 @@ type CartSnapshotItem = { productId: string; quantity: number; price: string; na
 async function snapshotCartOrItems(options: {
   userId: string;
   items?: Array<{ productId: string; quantity: number }>;
-}): Promise<{ cartSnapshot: CartSnapshotItem[]; subtotal: number; source: "server_cart" | "client_items" }>
-{
+}): Promise<{ cartSnapshot: CartSnapshotItem[]; subtotal: number; source: "server_cart" | "client_items" }> {
   const cartSnapshot: CartSnapshotItem[] = [];
   let subtotal = 0;
 
@@ -521,6 +522,19 @@ export async function handleEupagoWebhook(req: Request, res: Response) {
       status: "confirmed",
       paymentMetadata: mergedMetadata,
     } as any);
+
+    // Send order confirmed email (async, don't wait for it)
+    const user = await storage.getUser(order.userId);
+    if (user) {
+      const updatedOrder = await storage.getOrderById(order.id);
+      if (updatedOrder) {
+        sendEmail({
+          to: user.email,
+          subject: `Pedido #${order.id} confirmado`,
+          html: orderConfirmedEmail(updatedOrder, user.firstName),
+        }).catch(err => console.error('Failed to send order confirmed email:', err));
+      }
+    }
 
     return res.status(200).send("OK");
   } catch (error) {

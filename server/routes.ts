@@ -12,6 +12,9 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
+import { sendEmail } from "./email";
+import { welcomeEmail, loginEmail, newDeviceEmail } from "./email-templates/auth";
+import { orderCreatedEmail, orderConfirmedEmail, orderShippedEmail, orderDeliveredEmail } from "./email-templates/orders";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -22,12 +25,12 @@ export async function registerRoutes(
   app.post("/api/auth/register", async (req, res) => {
     try {
       const validated = registerSchema.parse(req.body);
-      
+
       // Enforce terms acceptance - required for GDPR compliance
       if (!validated.acceptTerms) {
         return res.status(400).json({ message: "Deve aceitar as políticas de privacidade" });
       }
-      
+
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(validated.email);
       if (existingUser) {
@@ -53,23 +56,30 @@ export async function registerRoutes(
         role: "customer",
       });
 
+      // Send welcome email (async, don't wait for it)
+      sendEmail({
+        to: user.email,
+        subject: 'Bem-vindo à Cara Fillers',
+        html: welcomeEmail(user.firstName),
+      }).catch(err => console.error('Failed to send welcome email:', err));
+
       // Regenerate session to ensure new cookie is sent
       req.session.regenerate((err) => {
         if (err) {
           console.error("Error regenerating session:", err);
           return res.status(500).json({ message: "Falha ao criar sessão" });
         }
-        
+
         req.session.userId = user.id;
-        
+
         req.session.save((err) => {
           if (err) {
             console.error("Error saving session:", err);
             return res.status(500).json({ message: "Falha ao criar sessão" });
           }
-          res.json({ 
-            success: true, 
-            user: { ...user, passwordHash: undefined } 
+          res.json({
+            success: true,
+            user: { ...user, passwordHash: undefined }
           });
         });
       });
@@ -97,15 +107,23 @@ export async function registerRoutes(
         return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
       }
 
+      // Send login notification email (async, don't wait for it)
+      const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+      sendEmail({
+        to: user.email,
+        subject: 'Novo acesso à sua conta',
+        html: loginEmail(user.firstName, ip as string, new Date()),
+      }).catch(err => console.error('Failed to send login email:', err));
+
       // Regenerate session to ensure new cookie is sent
       req.session.regenerate((err) => {
         if (err) {
           console.error("Error regenerating session:", err);
           return res.status(500).json({ message: "Falha ao criar sessão" });
         }
-        
+
         req.session.userId = user.id;
-        
+
         // Adjust session cookie duration based on "remember me" checkbox
         if (req.session.cookie) {
           if (validated.rememberMe) {
@@ -117,15 +135,15 @@ export async function registerRoutes(
             req.session.cookie.expires = false as any; // Session cookie - expires on browser close
           }
         }
-        
+
         req.session.save((err) => {
           if (err) {
             console.error("Error saving session:", err);
             return res.status(500).json({ message: "Falha ao criar sessão" });
           }
-          res.json({ 
-            success: true, 
-            user: { ...user, passwordHash: undefined } 
+          res.json({
+            success: true,
+            user: { ...user, passwordHash: undefined }
           });
         });
       });
@@ -152,7 +170,7 @@ export async function registerRoutes(
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
-      
+
       if (!email || typeof email !== "string") {
         return res.status(400).json({ message: "Email é obrigatório" });
       }
@@ -160,7 +178,7 @@ export async function registerRoutes(
       // Always return success to prevent email enumeration attacks
       // In production, this would send an email if the user exists
       console.log(`Password reset requested for: ${email}`);
-      
+
       // TODO: Implement actual email sending with SMTP
       // const user = await storage.getUserByEmail(email);
       // if (user) {
@@ -169,9 +187,9 @@ export async function registerRoutes(
       //   await sendResetEmail(user.email, token);
       // }
 
-      res.json({ 
-        success: true, 
-        message: "Se existir uma conta com este email, receberá instruções para redefinir a sua palavra-passe." 
+      res.json({
+        success: true,
+        message: "Se existir uma conta com este email, receberá instruções para redefinir a sua palavra-passe."
       });
     } catch (error) {
       console.error("Error in forgot password:", error);
@@ -311,7 +329,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.id;
       const { productId, quantity } = req.body;
-      
+
       if (!productId) {
         return res.status(400).json({ message: "Product ID required" });
       }
@@ -416,13 +434,13 @@ export async function registerRoutes(
         // Fetch fresh product data to ensure current pricing
         const product = await storage.getProductById(item.productId);
         if (!product) {
-          return res.status(400).json({ 
-            message: `Product ${item.product.name} is no longer available` 
+          return res.status(400).json({
+            message: `Product ${item.product.name} is no longer available`
           });
         }
         if (!product.inStock) {
-          return res.status(400).json({ 
-            message: `Product ${product.name} is out of stock` 
+          return res.status(400).json({
+            message: `Product ${product.name} is out of stock`
           });
         }
 
@@ -475,6 +493,14 @@ export async function registerRoutes(
       // Clear cart after successful order
       await storage.clearCart(userId);
 
+      // Send order created email (async, don't wait for it)
+      const user = req.user;
+      sendEmail({
+        to: user.email,
+        subject: `Pedido #${order.id} criado`,
+        html: orderCreatedEmail(order, user.firstName),
+      }).catch(err => console.error('Failed to send order created email:', err));
+
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
@@ -486,13 +512,13 @@ export async function registerRoutes(
   app.get("/api/international-orders/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
-      
+
       // Verify user exists
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
-      
+
       const orders = await storage.getOrdersByUser(userId);
       res.json(orders);
     } catch (error) {
@@ -625,13 +651,13 @@ export async function registerRoutes(
       for (const item of items) {
         const product = await storage.getProductById(item.productId);
         if (!product) {
-          return res.status(400).json({ 
-            message: `Product not found` 
+          return res.status(400).json({
+            message: `Product not found`
           });
         }
         if (!product.inStock) {
-          return res.status(400).json({ 
-            message: `Product ${product.name} is out of stock` 
+          return res.status(400).json({
+            message: `Product ${product.name} is out of stock`
           });
         }
 
@@ -784,6 +810,30 @@ export async function registerRoutes(
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
+
+      // Send email notifications for status changes (async, don't wait for it)
+      if (status === 'shipped' || status === 'delivered') {
+        const user = await storage.getUser(order.userId);
+        if (user) {
+          let emailHtml: string;
+          let emailSubject: string;
+
+          if (status === 'shipped') {
+            emailSubject = `Pedido #${order.id} enviado`;
+            emailHtml = orderShippedEmail(order, user.firstName);
+          } else {
+            emailSubject = `Pedido #${order.id} entregue`;
+            emailHtml = orderDeliveredEmail(order, user.firstName);
+          }
+
+          sendEmail({
+            to: user.email,
+            subject: emailSubject,
+            html: emailHtml,
+          }).catch(err => console.error(`Failed to send ${status} email:`, err));
+        }
+      }
+
       res.json(order);
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -878,8 +928,8 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error permanently deleting product:", error);
       if (error?.code === '23503') {
-        return res.status(400).json({ 
-          message: "Este produto não pode ser eliminado porque faz parte de encomendas existentes. Mantenha-o arquivado para preservar o histórico." 
+        return res.status(400).json({
+          message: "Este produto não pode ser eliminado porque faz parte de encomendas existentes. Mantenha-o arquivado para preservar o histórico."
         });
       }
       res.status(500).json({ message: "Failed to permanently delete product" });
@@ -901,14 +951,14 @@ export async function registerRoutes(
   app.post("/api/contact", async (req, res) => {
     try {
       const { name, email, subject, message } = req.body;
-      
+
       if (!name || !email || !message) {
         return res.status(400).json({ message: "Name, email and message are required" });
       }
 
       // In a real app, you would send an email or store the message
       console.log("Contact form submission:", { name, email, subject, message });
-      
+
       res.json({ success: true, message: "Message sent successfully" });
     } catch (error) {
       console.error("Error processing contact form:", error);
@@ -975,15 +1025,15 @@ export async function registerRoutes(
   app.post("/api/admin/paypal-settings", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { clientId, clientSecret, mode, isEnabled } = req.body;
-      
+
       const currentSettings = await storage.getPaypalSettings();
-      
+
       const updateData: any = {
         clientId,
         mode,
         isEnabled,
       };
-      
+
       if (clientSecret && clientSecret !== "********") {
         updateData.clientSecret = clientSecret;
       } else if (currentSettings?.clientSecret) {
@@ -991,9 +1041,9 @@ export async function registerRoutes(
       }
 
       const settings = await storage.updatePaypalSettings(updateData, req.user.id);
-      
+
       clearPayPalClientCache();
-      
+
       res.json({
         clientId: settings.clientId || "",
         clientSecret: settings.clientSecret ? "********" : "",
