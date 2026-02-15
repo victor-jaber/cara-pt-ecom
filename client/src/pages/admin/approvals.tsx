@@ -16,6 +16,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getUserInitials } from "@/lib/utils";
 
 export default function AdminApprovals() {
   const { toast } = useToast();
@@ -50,12 +51,7 @@ export default function AdminApprovals() {
   const approvedUsers = users.filter((u) => u.status === "approved");
   const rejectedUsers = users.filter((u) => u.status === "rejected");
 
-  const getInitials = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    return user.email?.[0].toUpperCase() || "U";
-  };
+  const getInitials = (user: User) => getUserInitials(user, "U");
 
   const UserCard = ({ user, showActions = false }: { user: User; showActions?: boolean }) => (
     <Card key={user.id} data-testid={`user-card-${user.id}`}>

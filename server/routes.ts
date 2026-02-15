@@ -13,11 +13,15 @@ import path from "path";
 import crypto from "crypto";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
 import { sendEmail } from "./email";
-import { welcomeEmail, loginEmail, newDeviceEmail } from "./email-templates/auth";
+import { welcomeEmail } from "./email-templates/auth";
 import { orderCreatedEmail, orderConfirmedEmail, orderShippedEmail, orderDeliveredEmail } from "./email-templates/orders";
+import { pendingApprovalCustomerEmail } from "./email-templates/pending-approval";
+import { accountStatusCustomerEmail } from "./email-templates/account-status";
 import { registerVerificationRoutes } from "./verification-routes";
 import { db as dbInstance } from "./db";
 import { emailVerifications } from "@shared/schema";
+import { getAppUrlFromRequest, notifyAdminContactMessage, notifyAdminPendingApproval } from "./admin-notifications";
+import { getRequestLanguage } from "./request-language";
 
 
 export async function registerRoutes(
@@ -104,6 +108,21 @@ export async function registerRoutes(
         role: "customer",
       });
 
+      // Notify admin for pending registrations (async, don't wait)
+      if (userStatus === "pending") {
+        notifyAdminPendingApproval({
+          req,
+          user: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            profession: user.profession,
+            createdAt: user.createdAt,
+          },
+        }).catch((err) => console.error("Failed to notify admin (pending approval):", err));
+      }
+
       // Link verification to user
       await dbInstance
         .update(emailVerifications)
@@ -111,11 +130,21 @@ export async function registerRoutes(
         .where(eq(emailVerifications.id, verificationId));
 
       // Send welcome email (async, don't wait for it)
-      sendEmail({
-        to: user.email,
-        subject: 'Bem-vindo à Cara Fillers',
-        html: welcomeEmail(user.firstName),
-      }).catch(err => console.error('Failed to send welcome email:', err));
+      const language = getRequestLanguage(req);
+      if (userStatus === "pending") {
+        const email = pendingApprovalCustomerEmail({ firstName: user.firstName, language });
+        sendEmail({
+          to: user.email,
+          subject: email.subject,
+          html: email.html,
+        }).catch((err) => console.error("Failed to send pending-approval email:", err));
+      } else {
+        sendEmail({
+          to: user.email,
+          subject: "Bem-vindo à Cara Fillers",
+          html: welcomeEmail(user.firstName),
+        }).catch((err) => console.error("Failed to send welcome email:", err));
+      }
 
       // Regenerate session to ensure new cookie is sent
       req.session.regenerate((err) => {
@@ -161,14 +190,6 @@ export async function registerRoutes(
       if (!isValid) {
         return res.status(401).json({ message: "Email ou palavra-passe incorretos" });
       }
-
-      // Send login notification email (async, don't wait for it)
-      const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-      sendEmail({
-        to: user.email,
-        subject: 'Novo acesso à sua conta',
-        html: loginEmail(user.firstName, ip as string, new Date()),
-      }).catch(err => console.error('Failed to send login email:', err));
 
       // Regenerate session to ensure new cookie is sent
       req.session.regenerate((err) => {
@@ -807,21 +828,209 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json(user);
+      // Never return password hashes to the client.
+      res.json({ ...user, passwordHash: undefined });
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
+  // Change email (requires current password + verificationId)
+  const changeEmailSchema = z.object({
+    newEmail: z.string().email("Email inválido"),
+    currentPassword: z.string().min(1, "Palavra-passe é obrigatória"),
+    verificationId: z.string().min(1, "verificationId é obrigatório"),
+  });
+
+  app.post("/api/user/change-email", isAuthenticated, async (req: any, res) => {
+    try {
+      const validated = changeEmailSchema.parse(req.body);
+      const user = req.user;
+
+      const normalizedNewEmail = validated.newEmail.trim().toLowerCase();
+      const normalizedCurrentEmail = (user.email || "").trim().toLowerCase();
+
+      if (normalizedNewEmail === normalizedCurrentEmail) {
+        return res.status(400).json({ message: "O novo email deve ser diferente do email atual" });
+      }
+
+      const existingUser = await storage.getUserByEmail(normalizedNewEmail);
+      if (existingUser) {
+        return res.status(400).json({ message: "Este email já está registado" });
+      }
+
+      const isValidPassword = await verifyPassword(validated.currentPassword, user.passwordHash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Palavra-passe incorreta" });
+      }
+
+      const { eq } = await import("drizzle-orm");
+      const [verification] = await dbInstance
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.id, validated.verificationId));
+
+      if (!verification) {
+        return res.status(400).json({ message: "Verificação inválida" });
+      }
+
+      if (verification.type !== "email_change") {
+        return res.status(400).json({ message: "Tipo de verificação inválido" });
+      }
+
+      if (verification.verifiedAt === null) {
+        return res.status(400).json({ message: "Email ainda não foi verificado" });
+      }
+
+      if (new Date() > new Date(verification.expiresAt)) {
+        return res.status(400).json({ message: "Verificação expirada" });
+      }
+
+      if ((verification.email || "").trim().toLowerCase() !== normalizedNewEmail) {
+        return res.status(400).json({ message: "Email não corresponde à verificação" });
+      }
+
+      // Prevent reusing a verificationId (same pattern as registration)
+      if (verification.userId !== null) {
+        return res.status(400).json({ message: "Esta verificação já foi utilizada" });
+      }
+
+      const updatedUser = await storage.updateUserProfile(user.id, { email: normalizedNewEmail });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await dbInstance
+        .update(emailVerifications)
+        .set({ userId: user.id })
+        .where(eq(emailVerifications.id, validated.verificationId));
+
+      // Best-effort logout: client also clears local auth storage.
+      req.session.destroy(() => {});
+
+      res.json({
+        success: true,
+        message: "Email atualizado com sucesso",
+        user: { ...updatedUser, passwordHash: undefined },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      console.error("Error changing email:", error);
+      res.status(500).json({ message: "Failed to change email" });
+    }
+  });
+
   // Admin routes
+  app.get("/api/admin/notification-settings", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const settings = await storage.getNotificationSettings();
+      res.json({
+        notificationEmail: settings?.notificationEmail || null,
+        updatedAt: settings?.updatedAt || null,
+        updatedBy: settings?.updatedBy || null,
+      });
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+      res.status(500).json({ message: "Failed to fetch notification settings" });
+    }
+  });
+
+  const updateNotificationSettingsSchema = z.object({
+    notificationEmail: z
+      .string()
+      .trim()
+      .transform((v) => (v === "" ? null : v.toLowerCase()))
+      .nullable()
+      .refine((v) => v === null || z.string().email().safeParse(v).success, {
+        message: "Email inválido",
+      }),
+  });
+
+  app.put("/api/admin/notification-settings", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validated = updateNotificationSettingsSchema.parse(req.body);
+      const updated = await storage.updateNotificationSettings(
+        { notificationEmail: validated.notificationEmail },
+        req.user?.id,
+      );
+      res.json({
+        notificationEmail: updated.notificationEmail || null,
+        updatedAt: updated.updatedAt || null,
+        updatedBy: updated.updatedBy || null,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      console.error("Error updating notification settings:", error);
+      res.status(500).json({ message: "Failed to update notification settings" });
+    }
+  });
+
   app.get("/api/admin/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      res.json(users);
+      const sanitized = users.map((u: any) => ({ ...u, passwordHash: undefined }));
+      res.json(sanitized);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Create admin user (internal; no email verification)
+  const createAdminSchema = z.object({
+    email: z.string().email("Email inválido"),
+    password: z.string().min(6, "A palavra-passe deve ter pelo menos 6 caracteres"),
+    firstName: z.string().min(1, "Nome é obrigatório"),
+    lastName: z.string().min(1, "Apelido é obrigatório"),
+    currentAdminPassword: z.string().min(1, "Palavra-passe do administrador é obrigatória"),
+  });
+
+  app.post("/api/admin/users", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const validated = createAdminSchema.parse(req.body);
+      const adminUser = req.user;
+
+      const isValidAdminPassword = await verifyPassword(
+        validated.currentAdminPassword,
+        adminUser.passwordHash,
+      );
+      if (!isValidAdminPassword) {
+        return res.status(401).json({ message: "Palavra-passe do administrador incorreta" });
+      }
+
+      const normalizedEmail = validated.email.trim().toLowerCase();
+      const existing = await storage.getUserByEmail(normalizedEmail);
+      if (existing) {
+        return res.status(400).json({ message: "Este email já está registado" });
+      }
+
+      const passwordHash = await hashPassword(validated.password);
+
+      const newAdmin = await storage.createUser({
+        email: normalizedEmail,
+        passwordHash,
+        firstName: validated.firstName,
+        lastName: validated.lastName,
+        // Required fields in schema; set safe defaults
+        phone: "-",
+        profession: "Administrador",
+        additionalInfo: null,
+        status: "approved",
+        role: "admin",
+      });
+
+      res.json({ ...newAdmin, passwordHash: undefined });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+      }
+      console.error("Error creating admin user:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
     }
   });
 
@@ -842,11 +1051,40 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid status" });
       }
 
+      const existingUser = await storage.getUser(req.params.id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Avoid duplicate emails if status didn't change.
+      if (existingUser.status === status) {
+        return res.json({ ...existingUser, passwordHash: undefined });
+      }
+
       const user = await storage.updateUserStatus(req.params.id, status);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.json(user);
+
+      // Notify customer when account is approved/rejected (async, don't wait)
+      if (status === "approved" || status === "rejected") {
+        const language = getRequestLanguage(req);
+        const appUrl = getAppUrlFromRequest(req);
+        const email = accountStatusCustomerEmail({
+          firstName: user.firstName,
+          status,
+          language,
+          appUrl: appUrl || undefined,
+        });
+
+        sendEmail({
+          to: user.email,
+          subject: email.subject,
+          html: email.html,
+        }).catch((err) => console.error("Failed to send account status email:", err));
+      }
+
+      res.json({ ...user, passwordHash: undefined });
     } catch (error) {
       console.error("Error updating user status:", error);
       res.status(500).json({ message: "Failed to update user status" });
@@ -1022,7 +1260,7 @@ export async function registerRoutes(
   // Contact form (public)
   app.post("/api/contact", async (req, res) => {
     try {
-      const { name, email, subject, message } = req.body;
+      const { name, email, subject, message, phone } = req.body;
 
       if (!name || !email || !message) {
         return res.status(400).json({ message: "Name, email and message are required" });
@@ -1031,7 +1269,21 @@ export async function registerRoutes(
       // In a real app, you would send an email or store the message
       console.log("Contact form submission:", { name, email, subject, message });
 
-      res.json({ success: true, message: "Message sent successfully" });
+      const notified = await notifyAdminContactMessage({
+        req,
+        message: {
+          name: String(name),
+          email: String(email),
+          phone: phone ? String(phone) : null,
+          subject: subject ? String(subject) : null,
+          body: String(message),
+        },
+      }).catch((err) => {
+        console.error("Failed to notify admin (contact message):", err);
+        return false;
+      });
+
+      res.json({ success: true, message: "Message sent successfully", notifiedAdmin: notified });
     } catch (error) {
       console.error("Error processing contact form:", error);
       res.status(500).json({ message: "Failed to send message" });

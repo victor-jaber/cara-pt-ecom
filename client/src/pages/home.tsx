@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
-import { PendingApproval } from "@/components/pending-approval";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQuery } from "@tanstack/react-query";
 import { ProductGridSkeleton } from "@/components/loading-skeleton";
 import { ProductCard } from "@/components/product-card";
@@ -11,7 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, OrderWithItems } from "@shared/schema";
-import { Package, ShoppingBag, ArrowRight, TrendingUp } from "lucide-react";
+import { Package, ShoppingBag, ArrowRight, TrendingUp, Clock, Shield } from "lucide-react";
 
 export default function Home() {
   const { user, isApproved, isPending, isRejected } = useAuth();
@@ -47,32 +47,36 @@ export default function Home() {
     },
   });
 
-  if (isPending) {
-    return <PendingApproval />;
-  }
-
-  if (isRejected) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-destructive">Acesso Negado</CardTitle>
-            <CardDescription>
-              Infelizmente o seu pedido de acesso não foi aprovado. Por favor contacte-nos para mais informações.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button asChild>
-              <a href="mailto:geral@cara.com.pt">Contactar Suporte</a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const showPendingBanner = isPending;
+  const showRejectedBanner = isRejected;
+  const isLimitedAccess = !isApproved;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
+      {showPendingBanner && (
+        <Alert className="border-amber-200 bg-amber-50 text-foreground dark:bg-amber-900/20 dark:border-amber-900/40">
+          <Clock className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+          <div>
+            <AlertTitle>Conta pendente de aprovação</AlertTitle>
+            <AlertDescription>
+              Olá{user?.firstName ? `, ${user.firstName}` : ""}! Resposta da aprovação emitida em até 48 horas úteis.
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+
+      {showRejectedBanner && (
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <div>
+            <AlertTitle>Acesso negado</AlertTitle>
+            <AlertDescription>
+              Infelizmente o seu pedido de acesso não foi aprovado. Por favor contacte-nos para mais informações.
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -80,25 +84,31 @@ export default function Home() {
             Bem-vindo{user?.firstName ? `, ${user.firstName}` : ""}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Explore o nosso catálogo de produtos premium.
+            {isLimitedAccess
+              ? "A sua conta ainda não tem acesso ao catálogo."
+              : "Explore o nosso catálogo de produtos premium."}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/produtos">
-            <Button data-testid="button-view-all-products">
-              <ShoppingBag className="mr-2 h-4 w-4" />
-              Ver Produtos
-            </Button>
-          </Link>
-          <Link href="/meus-pedidos">
-            <Button variant="outline" data-testid="button-view-orders">
-              <Package className="mr-2 h-4 w-4" />
-              Meus Pedidos
-            </Button>
-          </Link>
-        </div>
+        {!isLimitedAccess && (
+          <div className="flex gap-2">
+            <Link href="/produtos">
+              <Button data-testid="button-view-all-products">
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                Ver Produtos
+              </Button>
+            </Link>
+            <Link href="/meus-pedidos">
+              <Button variant="outline" data-testid="button-view-orders">
+                <Package className="mr-2 h-4 w-4" />
+                Meus Pedidos
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
+      {isLimitedAccess ? null : (
+        <>
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
@@ -230,6 +240,8 @@ export default function Home() {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

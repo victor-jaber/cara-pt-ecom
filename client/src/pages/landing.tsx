@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Shield,
   Sparkles,
@@ -26,12 +27,14 @@ import {
   Building2,
   Globe,
   Play,
-  MessageCircle
+  MessageCircle,
+  ShoppingBag
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { SiWhatsapp } from "react-icons/si";
 import { useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const WHATSAPP_NUMBER = "351910060560";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Gostaria de solicitar acesso profissional à loja CARA.")}`;
@@ -214,6 +217,7 @@ function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
 
 export default function Landing() {
   const { t } = useLanguage();
+  const { user, isAuthenticated, isPending, isApproved, isRejected } = useAuth();
   const [activeProduct, setActiveProduct] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -384,6 +388,30 @@ export default function Landing() {
 
         <div className="container mx-auto px-4 py-20 relative z-10">
           <div className="max-w-5xl mx-auto text-center space-y-8">
+            {isAuthenticated && isPending && (
+              <Alert className="text-left border-amber-200 bg-amber-50 text-foreground dark:bg-amber-900/20 dark:border-amber-900/40">
+                <Clock className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                <div>
+                  <AlertTitle>Conta pendente de aprovação</AlertTitle>
+                  <AlertDescription>
+                    Olá{user?.firstName ? `, ${user.firstName}` : ""}! Resposta da aprovação emitida em até 48 horas úteis.
+                  </AlertDescription>
+                </div>
+              </Alert>
+            )}
+
+            {isAuthenticated && isRejected && (
+              <Alert variant="destructive" className="text-left">
+                <Shield className="h-4 w-4" />
+                <div>
+                  <AlertTitle>Acesso negado</AlertTitle>
+                  <AlertDescription>
+                    Infelizmente o seu pedido de acesso não foi aprovado. Por favor contacte-nos para mais informações.
+                  </AlertDescription>
+                </div>
+              </Alert>
+            )}
+
             <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
               <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm">
                 <Sparkles className="w-4 h-4 mr-2 text-primary" />
@@ -413,12 +441,32 @@ export default function Landing() {
               className="flex flex-col sm:flex-row gap-4 justify-center pt-4 animate-fade-in-up"
               style={{ animationDelay: '300ms' }}
             >
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                <Button size="lg" className="gap-2 text-lg px-8 py-6" data-testid="button-hero-register">
-                  <SiWhatsapp className="w-5 h-5" />
-                  {t("hero.cta_whatsapp")}
-                </Button>
-              </a>
+              {!isAuthenticated && (
+                <Link href="/login?tab=register">
+                  <Button size="lg" className="gap-2 text-lg px-8 py-6" data-testid="button-hero-register">
+                    <SiWhatsapp className="w-5 h-5" />
+                    {t("hero.cta_whatsapp")}
+                  </Button>
+                </Link>
+              )}
+
+              {isAuthenticated && isPending && (
+                <div className="flex flex-col items-center gap-3">
+                  <Button
+                    size="lg"
+                    className="text-lg px-8 py-6"
+                    disabled
+                    data-testid="button-hero-register"
+                  >
+                    {t("hero.cta_pending")}
+                  </Button>
+                  <p className="text-sm text-muted-foreground max-w-xl text-center">
+                    {t("hero.cta_pending_desc")}
+                  </p>
+                </div>
+              )}
+
+              {isAuthenticated && isApproved && null}
               <Link href="/sobre">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6" data-testid="button-hero-about">
                   <Play className="w-5 h-5 mr-2" />
@@ -1059,18 +1107,57 @@ export default function Landing() {
               {t("cta.description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                <Button size="lg" variant="secondary" className="gap-2 text-lg px-8 py-6" data-testid="button-cta-register">
-                  <SiWhatsapp className="w-5 h-5" />
-                  {t("cta.button_whatsapp")}
-                </Button>
-              </a>
-              <Link href="/contacto">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" data-testid="button-cta-contact">
-                  <Phone className="mr-2 w-5 h-5" />
-                  {t("cta.button_contact")}
-                </Button>
-              </Link>
+              {!isAuthenticated && (
+                <Link href="/login?tab=register">
+                  <Button size="lg" variant="secondary" className="gap-2 text-lg px-8 py-6" data-testid="button-cta-register">
+                    <SiWhatsapp className="w-5 h-5" />
+                    {t("cta.button_whatsapp")}
+                  </Button>
+                </Link>
+              )}
+
+              {isAuthenticated && isPending && (
+                <div className="flex flex-col items-center gap-3">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="text-lg px-8 py-6"
+                    disabled
+                    data-testid="button-cta-register"
+                  >
+                    {t("cta.button_pending")}
+                  </Button>
+                  <p className="text-sm opacity-90 max-w-xl text-center">
+                    {t("cta.pending_desc")}
+                  </p>
+                </div>
+              )}
+
+              {isAuthenticated && isApproved ? (
+                <Link href="/produtos">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="text-lg px-8 py-6 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                    data-testid="button-cta-products"
+                  >
+                    <ShoppingBag className="mr-2 w-5 h-5" />
+                    {t("cta.button_products")}
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/contacto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="text-lg px-8 py-6 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+                    data-testid="button-cta-contact"
+                  >
+                    <Phone className="mr-2 w-5 h-5" />
+                    {t("cta.button_contact")}
+                  </Button>
+                </Link>
+              )}
             </div>
           </motion.div>
         </div>

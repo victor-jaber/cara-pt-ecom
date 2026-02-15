@@ -90,13 +90,13 @@ export default function ContactPage() {
     {
       icon: MapPin,
       label: t("contactPage.info.address"),
-      value: "Lisboa, Portugal",
+      value: "1600-428 Lisboa, Portugal",
       href: null,
     },
     {
       icon: Clock,
       label: t("contactPage.info.hours"),
-      value: "Seg-Sex: 9h-18h",
+      value: "Seg-Sex: 10h-18h (exceto feriados)",
       href: null,
     },
   ];

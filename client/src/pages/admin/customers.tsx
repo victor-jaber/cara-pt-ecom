@@ -31,6 +31,7 @@ import {
 import type { User } from "@shared/schema";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { getUserInitials } from "@/lib/utils";
 
 export default function AdminCustomers() {
   const [search, setSearch] = useState("");
@@ -41,12 +42,7 @@ export default function AdminCustomers() {
     queryKey: ["/api/admin/users"],
   });
 
-  const getInitials = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    return user.email?.[0].toUpperCase() || "U";
-  };
+  const getInitials = (user: User) => getUserInitials(user, "U");
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =

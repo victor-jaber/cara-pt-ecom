@@ -33,6 +33,8 @@ import AdminProducts from "@/pages/admin/products";
 import AdminCustomers from "@/pages/admin/customers";
 import AdminPaypal from "@/pages/admin/paypal";
 import AdminShipping from "@/pages/admin/shipping";
+import AdminUsers from "@/pages/admin/users";
+import AdminSettings from "@/pages/admin/settings";
 import AuthPage from "@/pages/auth-page";
 import ForgotPassword from "@/pages/forgot-password";
 
@@ -46,8 +48,8 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading: authLoading, isPending, isRejected, isApproved } = useAuth();
+function AuthRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { isPortugal, isInternational, isLoading: locationLoading } = useLocationContext();
 
   // Wait for location detection first
@@ -82,8 +84,81 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       window.location.href = "/login";
       return null;
     }
+  }
 
-    if (isPending || isRejected || !isApproved) {
+  return <PublicLayout>{children}</PublicLayout>;
+}
+
+function ApprovedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading, isPending, isRejected, isApproved } = useAuth();
+  const { isPortugal, isInternational, isLoading: locationLoading } = useLocationContext();
+
+  // Wait for location detection first
+  if (locationLoading) {
+    return (
+      <PublicLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        </div>
+      </PublicLayout>
+    );
+  }
+
+  // International users can access immediately without auth
+  if (isInternational) {
+    return <PublicLayout>{children}</PublicLayout>;
+  }
+
+  if (isPortugal) {
+    if (authLoading) {
+      return (
+        <PublicLayout>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-pulse text-muted-foreground">A carregar...</div>
+          </div>
+        </PublicLayout>
+      );
+    }
+
+    if (!isAuthenticated) {
+      window.location.href = "/login";
+      return null;
+    }
+
+    if (!isApproved) {
+      if (isPending) {
+        return (
+          <PublicLayout>
+            <PendingApproval />
+          </PublicLayout>
+        );
+      }
+
+      if (isRejected) {
+        return (
+          <PublicLayout>
+            <div className="min-h-[60vh] flex items-center justify-center p-4">
+              <div className="max-w-md w-full">
+                <div className="rounded-lg border bg-background p-6 text-center">
+                  <h1 className="text-2xl font-semibold text-destructive">Acesso Negado</h1>
+                  <p className="text-muted-foreground mt-2">
+                    Infelizmente o seu pedido de acesso não foi aprovado. Por favor contacte-nos para mais informações.
+                  </p>
+                  <div className="mt-5">
+                    <a
+                      href="mailto:geral@cara.com.pt"
+                      className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+                    >
+                      Contactar Suporte
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </PublicLayout>
+        );
+      }
+
       return (
         <PublicLayout>
           <PendingApproval />
@@ -140,11 +215,17 @@ function Router() {
         <Route path="/admin/clientes" component={() => (
           <AdminRoute><AdminCustomers /></AdminRoute>
         )} />
+        <Route path="/admin/usuarios" component={() => (
+          <AdminRoute><AdminUsers /></AdminRoute>
+        )} />
         <Route path="/admin/paypal" component={() => (
           <AdminRoute><AdminPaypal /></AdminRoute>
         )} />
         <Route path="/admin/frete" component={() => (
           <AdminRoute><AdminShipping /></AdminRoute>
+        )} />
+        <Route path="/admin/configuracoes" component={() => (
+          <AdminRoute><AdminSettings /></AdminRoute>
         )} />
         <Route component={() => (
           <AdminRoute><NotFound /></AdminRoute>
@@ -165,28 +246,28 @@ function Router() {
         <PublicLayout><ForgotPassword /></PublicLayout>
       )} />
       <Route path="/inicio" component={() => (
-        <ProtectedRoute><Home /></ProtectedRoute>
+        <AuthRoute><Home /></AuthRoute>
       )} />
       <Route path="/produtos" component={() => (
-        <ProtectedRoute><Products /></ProtectedRoute>
+        <ApprovedRoute><Products /></ApprovedRoute>
       )} />
       <Route path="/produto/:slug" component={() => (
-        <ProtectedRoute><ProductDetail /></ProtectedRoute>
+        <ApprovedRoute><ProductDetail /></ApprovedRoute>
       )} />
       <Route path="/carrinho" component={() => (
-        <ProtectedRoute><Cart /></ProtectedRoute>
+        <ApprovedRoute><Cart /></ApprovedRoute>
       )} />
       <Route path="/checkout" component={() => (
-        <ProtectedRoute><Checkout /></ProtectedRoute>
+        <ApprovedRoute><Checkout /></ApprovedRoute>
       )} />
       <Route path="/minha-conta" component={() => (
-        <ProtectedRoute><Account /></ProtectedRoute>
+        <ApprovedRoute><Account /></ApprovedRoute>
       )} />
       <Route path="/meus-pedidos" component={() => (
-        <ProtectedRoute><Orders /></ProtectedRoute>
+        <ApprovedRoute><Orders /></ApprovedRoute>
       )} />
       <Route path="/pedido/:id" component={() => (
-        <ProtectedRoute><OrderConfirmation /></ProtectedRoute>
+        <ApprovedRoute><OrderConfirmation /></ApprovedRoute>
       )} />
       <Route path="/sobre" component={() => (
         <PublicLayout><About /></PublicLayout>

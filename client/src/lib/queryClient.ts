@@ -33,6 +33,14 @@ export async function apiRequest(
     headers["Content-Type"] = "application/json";
   }
   
+  // Add language header for server-side emails/messages
+  try {
+    const lang = window?.localStorage?.getItem("cara_language")?.trim();
+    if (lang) headers["X-App-Language"] = lang;
+  } catch {
+    // ignore
+  }
+  
   const res = await fetch(url, {
     method,
     headers,

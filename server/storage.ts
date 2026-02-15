@@ -8,6 +8,7 @@ import {
   paypalSettings,
   stripeSettings,
   eupagoSettings,
+  notificationSettings,
   shippingOptions,
   type User,
   type UpsertUser,
@@ -27,6 +28,8 @@ import {
   type InsertStripeSettings,
   type EupagoSettings,
   type InsertEupagoSettings,
+  type NotificationSettings,
+  type InsertNotificationSettings,
   type ShippingOption,
   type InsertShippingOption,
   emailVerifications,
@@ -88,6 +91,10 @@ export interface IStorage {
   // EuPago settings operations
   getEupagoSettings(): Promise<EupagoSettings | undefined>;
   updateEupagoSettings(data: InsertEupagoSettings, updatedBy?: string): Promise<EupagoSettings>;
+
+  // Notification settings operations
+  getNotificationSettings(): Promise<NotificationSettings | undefined>;
+  updateNotificationSettings(data: InsertNotificationSettings, updatedBy?: string): Promise<NotificationSettings>;
 
   // Shipping options operations
   getAllShippingOptions(): Promise<ShippingOption[]>;
@@ -502,6 +509,45 @@ export class DatabaseStorage implements IStorage {
 
     const [created] = await db
       .insert(eupagoSettings)
+      .values({
+        id: "default",
+        ...data,
+        updatedAt: new Date(),
+        updatedBy: updatedBy || null,
+      } as any)
+      .returning();
+    return created;
+  }
+
+  async getNotificationSettings(): Promise<NotificationSettings | undefined> {
+    const [settings] = await db.select().from(notificationSettings).where(eq(notificationSettings.id, "default"));
+    return settings;
+  }
+
+  async updateNotificationSettings(
+    data: InsertNotificationSettings,
+    updatedBy?: string,
+  ): Promise<NotificationSettings> {
+    const [existing] = await db
+      .select()
+      .from(notificationSettings)
+      .where(eq(notificationSettings.id, "default"));
+
+    if (existing) {
+      const [updated] = await db
+        .update(notificationSettings)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+          updatedBy: updatedBy || null,
+        } as any)
+        .where(eq(notificationSettings.id, "default"))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(notificationSettings)
       .values({
         id: "default",
         ...data,

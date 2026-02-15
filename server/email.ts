@@ -7,13 +7,13 @@ let transporter: Transporter | null = null;
 function getTransporter(): Transporter | null {
     if (transporter) return transporter;
 
-    const host = process.env.EMAIL_HOST;
-    const port = process.env.EMAIL_PORT;
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASS;
+    const host = process.env.EMAIL_HOST || process.env.SMTP_HOST;
+    const port = process.env.EMAIL_PORT || process.env.SMTP_PORT;
+    const user = process.env.EMAIL_USER || process.env.SMTP_USER;
+    const pass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
 
     if (!host || !port || !user || !pass) {
-        console.warn('Email not configured. Set EMAIL_HOST, EMAIL_PORT, EMAIL_USER, and EMAIL_PASS in .env');
+        console.warn('Email not configured. Set EMAIL_* (preferred) or SMTP_* env vars. Required: host, port, user, pass.');
         return null;
     }
 
@@ -45,8 +45,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
             return false;
         }
 
-        const from = process.env.EMAIL_FROM || 'noreply@cara-fillers.com';
-        const fromName = process.env.EMAIL_FROM_NAME || 'Cara Fillers';
+        const from = process.env.EMAIL_FROM || process.env.SMTP_FROM || 'noreply@cara-fillers.com';
+        const fromName = process.env.EMAIL_FROM_NAME || process.env.SMTP_FROM_NAME || 'Cara Fillers';
 
         await emailTransporter.sendMail({
             from: `"${fromName}" <${from}>`,

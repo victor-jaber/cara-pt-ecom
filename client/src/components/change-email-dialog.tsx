@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { clearStoredAuthUser } from "@/lib/authPersistence";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CodeInput } from "@/components/code-input";
 import { Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface ChangeEmailDialogProps {
     open: boolean;
@@ -19,10 +21,28 @@ type EmailChangeStep = "input" | "verify";
 
 export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEmailDialogProps) {
     const { toast } = useToast();
+    const [, setLocation] = useLocation();
     const [step, setStep] = useState<EmailChangeStep>("input");
     const [newEmail, setNewEmail] = useState("");
+    const [currentPassword, setCurrentPassword] = useState("");
     const [code, setCode] = useState("");
     const [resendCooldown, setResendCooldown] = useState(0);
+
+    const getErrorMessage = (error: any, fallback: string) => {
+        const raw = error?.message;
+        if (typeof raw === "string") {
+            const idx = raw.indexOf(":");
+            const maybeJson = idx >= 0 ? raw.slice(idx + 1).trim() : raw;
+            try {
+                const parsed = JSON.parse(maybeJson);
+                if (parsed?.message) return parsed.message as string;
+            } catch {
+                // ignore
+            }
+            return raw;
+        }
+        return fallback;
+    };
 
     // Send verification code
     const sendCodeMutation = useMutation({
@@ -52,7 +72,7 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
         onError: (error: any) => {
             toast({
                 title: "Erro",
-                description: error.message || "Não foi possível enviar o código",
+                description: getErrorMessage(error, "Não foi possível enviar o código"),
                 variant: "destructive",
             });
         },
@@ -68,27 +88,39 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
                 type: "email_change",
             })).json();
 
-            // Then update the email with verificationId
-            const updateRes = await apiRequest("PUT", "/api/user/profile", {
-                email: newEmail,
+            // Then change email (requires current password)
+            await apiRequest("POST", "/api/user/change-email", {
+                newEmail,
+                currentPassword,
                 verificationId: verifyRes.verificationId,
             });
-
-            return updateRes;
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            // Best-effort server logout
+            try {
+                await apiRequest("POST", "/api/auth/logout");
+            } catch {
+                // ignore
+            }
+
+            // Client-side logout (important because Authorization header comes from localStorage)
+            clearStoredAuthUser();
+            queryClient.setQueryData(["/api/auth/user"], null);
             queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+
             toast({
                 title: "Email Atualizado",
-                description: "O seu email foi alterado com sucesso",
+                description: "O seu email foi alterado. Por favor, inicie sessão novamente.",
             });
+
             onOpenChange(false);
             resetDialog();
+            setLocation("/login");
         },
         onError: (error: any) => {
             toast({
                 title: "Erro",
-                description: error.message || "Código inválido ou expirado",
+                description: getErrorMessage(error, "Código inválido ou expirado"),
                 variant: "destructive",
             });
             setCode("");
@@ -104,6 +136,16 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
             });
             return;
         }
+
+        if (!currentPassword) {
+            toast({
+                title: "Palavra-passe obrigatória",
+                description: "Por favor, introduza a sua palavra-passe atual.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         sendCodeMutation.mutate();
     };
 
@@ -114,6 +156,7 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
     const resetDialog = () => {
         setStep("input");
         setNewEmail("");
+        setCurrentPassword("");
         setCode("");
         setResendCooldown(0);
     };
@@ -147,6 +190,17 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
                                     onChange={(e) => setNewEmail(e.target.value)}
                                 />
                             </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="current-password">Palavra-passe atual</Label>
+                                <Input
+                                    id="current-password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                />
+                            </div>
                             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
                                     ℹ️ Iremos enviar um código de verificação para o novo email.
@@ -156,7 +210,7 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
                         <DialogFooter>
                             <Button
                                 onClick={handleSendCode}
-                                disabled={sendCodeMutation.isPending || !newEmail}
+                                disabled={sendCodeMutation.isPending || !newEmail || !currentPassword}
                             >
                                 {sendCodeMutation.isPending ? (
                                     <>

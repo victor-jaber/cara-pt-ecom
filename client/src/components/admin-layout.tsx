@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { clearStoredAuthUser } from "@/lib/authPersistence";
+import { getUserInitials } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -71,6 +72,11 @@ const adminNavItems = [
     icon: Users,
   },
   {
+    title: "Usuários",
+    href: "/admin/usuarios",
+    icon: Users,
+  },
+  {
     title: "Métodos de Pagamento",
     href: "/admin/paypal",
     icon: CreditCard,
@@ -79,6 +85,11 @@ const adminNavItems = [
     title: "Frete",
     href: "/admin/frete",
     icon: Truck,
+  },
+  {
+    title: "Configurações",
+    href: "/admin/configuracoes",
+    icon: Shield,
   },
 ];
 
@@ -110,11 +121,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     }
   };
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    const first = firstName?.[0] || "";
-    const last = lastName?.[0] || "";
-    return (first + last).toUpperCase() || "AD";
-  };
+  const getInitials = (firstName?: string, lastName?: string) =>
+    getUserInitials({ firstName, lastName, email: user?.email }, "AD");
 
   const getFullName = () => {
     if (user?.firstName && user?.lastName) {

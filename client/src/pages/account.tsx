@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Loader2, Save, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { ChangeEmailDialog } from "@/components/change-email-dialog";
+import { getUserInitials } from "@/lib/utils";
 
 const accountSchema = z.object({
   firstName: z.string().min(1, "Nome é obrigatório"),
@@ -31,6 +33,7 @@ type AccountForm = z.infer<typeof accountSchema>;
 export default function Account() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
 
   const form = useForm<AccountForm>({
     resolver: zodResolver(accountSchema),
@@ -82,15 +85,7 @@ export default function Account() {
     },
   });
 
-  const getInitials = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
+  const getInitials = () => getUserInitials(user, "U");
 
   const getStatusBadge = () => {
     switch (user?.status) {
@@ -280,6 +275,28 @@ export default function Account() {
                 </CardContent>
               </Card>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle>Segurança</CardTitle>
+                  <CardDescription>Gerencie o seu email de acesso.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Email</div>
+                    <div className="text-sm text-muted-foreground">{user?.email || ""}</div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsChangeEmailOpen(true)}
+                    disabled={!user?.email}
+                  >
+                    Alterar email
+                  </Button>
+                </CardContent>
+              </Card>
+
               <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save">
                 {updateMutation.isPending ? (
                   <>
@@ -297,6 +314,14 @@ export default function Account() {
           </Form>
         </div>
       </div>
+
+      {user?.email && (
+        <ChangeEmailDialog
+          open={isChangeEmailOpen}
+          onOpenChange={setIsChangeEmailOpen}
+          currentEmail={user.email}
+        />
+      )}
     </div>
   );
 }

@@ -139,6 +139,14 @@ export const eupagoSettings = pgTable("eupago_settings", {
   updatedBy: varchar("updated_by"),
 });
 
+// Admin notification settings (singleton)
+export const notificationSettings = pgTable("notification_settings", {
+  id: varchar("id").primaryKey().default("default"),
+  notificationEmail: varchar("notification_email"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"),
+});
+
 // Order items table
 export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -294,6 +302,11 @@ export const insertEupagoSettingsSchema = createInsertSchema(eupagoSettings).omi
   updatedAt: true,
 });
 
+export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export const insertShippingOptionSchema = createInsertSchema(shippingOptions).omit({
   id: true,
   createdAt: true,
@@ -344,6 +357,9 @@ export type InsertStripeSettings = z.infer<typeof insertStripeSettingsSchema>;
 
 export type EupagoSettings = typeof eupagoSettings.$inferSelect;
 export type InsertEupagoSettings = z.infer<typeof insertEupagoSettingsSchema>;
+
+export type NotificationSettings = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
 export type ShippingOption = typeof shippingOptions.$inferSelect;
 export type InsertShippingOption = z.infer<typeof insertShippingOptionSchema>;

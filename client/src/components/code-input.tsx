@@ -84,7 +84,7 @@ export function CodeInput({
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
                     className={`w-12 h-14 text-center text-2xl font-bold rounded-md border ${error ? "border-red-500" : "border-input"
-                        } bg-background px-3 py-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
+                        } bg-background px-3 py-2 text-primary caret-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50`}
                     autoFocus={index === 0}
                 />
             ))}

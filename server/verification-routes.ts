@@ -35,6 +35,36 @@ export function registerVerificationRoutes(app: Express) {
             const { email, type } = validated;
             const normalizedEmail = email.trim().toLowerCase();
 
+            // For email changes, require authentication (session or Bearer)
+            if (type === "email_change") {
+                let userId = (req as any).session?.userId as string | undefined;
+                if (!userId) {
+                    const authHeader = req.headers.authorization;
+                    if (authHeader && authHeader.startsWith("Bearer ")) {
+                        userId = authHeader.substring(7);
+                    }
+                }
+
+                if (!userId) {
+                    return res.status(401).json({ message: "Unauthorized" });
+                }
+
+                const currentUser = await storage.getUser(userId);
+                if (!currentUser) {
+                    return res.status(401).json({ message: "Unauthorized" });
+                }
+
+                const currentEmail = (currentUser.email || "").trim().toLowerCase();
+                if (normalizedEmail === currentEmail) {
+                    return res.status(400).json({ message: "O novo email deve ser diferente do email atual" });
+                }
+
+                const existingUser = await storage.getUserByEmail(normalizedEmail);
+                if (existingUser && existingUser.id !== currentUser.id) {
+                    return res.status(400).json({ message: "Este email já está registado" });
+                }
+            }
+
             // Rate limiting: max 3 codes per 15 minutes
             const recentAttempts = await countRecentVerificationAttempts(normalizedEmail, 15);
             if (recentAttempts >= 3) {

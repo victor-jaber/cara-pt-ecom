@@ -35,6 +35,8 @@ export const translations = {
             title_part3: "para cada tratamento",
             subtitle: "Ácido Hialurónico reticulado premium com Lidocaína 3%, desenvolvido para profissionais médicos que exigem excelência em cada procedimento.",
             cta_whatsapp: "Solicitar Acesso Profissional",
+            cta_pending: "Conta em análise — aguarde a aprovação pela equipe CARA Fillers.",
+            cta_pending_desc: "Sua conta está atualmente em análise. Um membro da equipe CARA Fillers irá revisar suas informações em breve. Você será notificado assim que sua conta for aprovada.",
             cta_about: "Conhecer a CARA",
             badges: {
                 infarmed: "Registado no INFARMED",
@@ -174,7 +176,7 @@ export const translations = {
             email_label: "Email",
             address_label: "Morada",
             hours_label: "Horário",
-            hours_value: "Seg-Sex: 9h-18h",
+            hours_value: "Seg-Sex: 10h-18h",
             distributor: {
                 title: "Distribuidor Oficial Portugal",
                 description: "PROMIPHARM é o distribuidor exclusivo dos produtos CARA em território português, garantindo qualidade e suporte local.",
@@ -188,7 +190,10 @@ export const translations = {
             title: "Pronto para Elevar os Seus Tratamentos?",
             description: "Junte-se aos profissionais médicos que confiam na CARA para resultados excepcionais. Solicite o seu acesso agora e comece a transformar vidas.",
             button_whatsapp: "Solicitar Acesso Profissional",
-            button_contact: "Falar Connosco"
+            button_pending: "Conta em análise — aguarde a aprovação pela equipe CARA Fillers.",
+            pending_desc: "Sua conta está atualmente em análise. Um membro da equipe CARA Fillers irá revisar suas informações em breve. Você será notificado assim que sua conta for aprovada.",
+            button_contact: "Falar Connosco",
+            button_products: "Ver Produtos"
         },
         about: {
             title: "Sobre a CARA",
@@ -260,8 +265,8 @@ export const translations = {
                 hours: "Horário"
             },
             professional: {
-                title: "Profissionais de Saúde",
-                description: "Para solicitar acesso à nossa loja online e catálogo de produtos, registe-se através do botão \"Solicitar Acesso\" no topo da página. A sua conta será verificada e aprovada pela nossa equipa."
+                title: "Criação de Conta",
+                description: "Para solicitar acesso à nossa loja online e catálogo de produtos, registe-se através do botão \"Solicitar Acesso\" no topo da página. A sua conta será verificada internamente pela nossa equipa brevemente, receberá um e-mail com a confirmação."
             },
             form: {
                 title: "Envie-nos uma Mensagem",
@@ -342,6 +347,7 @@ export const translations = {
             },
             professions: {
                 doctor: "Médico(a)",
+                dentist: "Médico(a) Dentista",
                 derm: "Médico(a) Dermatologista",
                 aesthetic: "Médico(a) Estético",
                 plastic: "Médico(a) Cirurgião Plástico",
@@ -512,6 +518,8 @@ export const translations = {
             title_part3: "for every treatment",
             subtitle: "Premium cross-linked Hyaluronic Acid with Lidocaine 3%, developed for medical professionals who demand excellence in every procedure.",
             cta_whatsapp: "Request Professional Access",
+            cta_pending: "Account under review — please wait for approval by the CARA Fillers team.",
+            cta_pending_desc: "Your account is currently under review. A member of the CARA Fillers team will review your information soon. You will be notified as soon as your account is approved.",
             cta_about: "Meet CARA",
             badges: {
                 infarmed: "INFARMED Registered",
@@ -665,7 +673,10 @@ export const translations = {
             title: "Ready to Elevate Your Treatments?",
             description: "Join medical professionals who trust CARA for exceptional results. Request your access now and start transforming lives.",
             button_whatsapp: "Request Professional Access",
-            button_contact: "Talk to Us"
+            button_pending: "Account under review — please wait for approval by the CARA Fillers team.",
+            pending_desc: "Your account is currently under review. A member of the CARA Fillers team will review your information soon. You will be notified as soon as your account is approved.",
+            button_contact: "Talk to Us",
+            button_products: "View Products"
         },
         about: {
             title: "About CARA",
@@ -856,6 +867,8 @@ export const translations = {
             title_part3: "para cada tratamiento",
             subtitle: "Ácido Hialurónico reticulado premium con Lidocaína 3%, desarrollado para profesionales médicos que exigen excelencia en cada procedimiento.",
             cta_whatsapp: "Solicitar Acceso Profesional",
+            cta_pending: "Cuenta en revisión — espere la aprobación del equipo de CARA Fillers.",
+            cta_pending_desc: "Su cuenta está actualmente en revisión. Un miembro del equipo de CARA Fillers revisará su información pronto. Se le notificará tan pronto como su cuenta sea aprobada.",
             cta_about: "Conocer CARA",
             badges: {
                 infarmed: "Registrado en INFARMED",
@@ -995,7 +1008,7 @@ export const translations = {
             email_label: "Correo",
             address_label: "Dirección",
             hours_label: "Horario",
-            hours_value: "Lun-Vie: 9h-18h",
+            hours_value: "Lun-Vie: 10h-18h",
             distributor: {
                 title: "Distribuidor Oficial Portugal",
                 description: "PROMIPHARM es el distribuidor exclusivo de los productos CARA en territorio portugués, garantizando calidad y soporte local.",
@@ -1010,7 +1023,10 @@ export const translations = {
             title: "¿Listo para Elevar sus Tratamientos?",
             description: "Únase a los profesionales médicos que confían en CARA para resultados excepcionales. Solicite su acceso ahora y comience a transformar vidas.",
             button_whatsapp: "Solicitar Acceso Profesional",
-            button_contact: "Hable con Nosotros"
+            button_pending: "Cuenta en revisión — espere la aprobación del equipo de CARA Fillers.",
+            pending_desc: "Su cuenta está actualmente en revisión. Un miembro del equipo de CARA Fillers revisará su información pronto. Se le notificará tan pronto como su cuenta sea aprobada.",
+            button_contact: "Hable con Nosotros",
+            button_products: "Ver Productos"
         },
         about: {
             title: "Sobre CARA",
@@ -1267,6 +1283,8 @@ export const translations = {
             title_part3: "pour chaque traitement",
             subtitle: "Acide Hyaluronique réticulé premium avec Lidocaïne 3%, développé pour les professionnels médicaux exigeant l'excellence dans chaque procédure.",
             cta_whatsapp: "Demander l'Accès Professionnel",
+            cta_pending: "Compte en cours d'examen — veuillez attendre l'approbation de l'équipe CARA Fillers.",
+            cta_pending_desc: "Votre compte est actuellement en cours d'examen. Un membre de l'équipe CARA Fillers examinera bientôt vos informations. Vous serez averti dès que votre compte sera approuvé.",
             cta_about: "Découvrir CARA",
             badges: {
                 infarmed: "Enregistré INFARMED",
@@ -1406,7 +1424,7 @@ export const translations = {
             email_label: "Email",
             address_label: "Adresse",
             hours_label: "Horaires",
-            hours_value: "Lun-Ven: 9h-18h",
+            hours_value: "Lun-Ven: 10h-18h",
             distributor: {
                 title: "Distributeur Officiel Portugal",
                 description: "PROMIPHARM est le distributeur exclusif des produits CARA sur le territoire portugais, garantissant qualité et support local.",
@@ -1420,7 +1438,10 @@ export const translations = {
             title: "Prêt à Élever Vos Traitements ?",
             description: "Rejoignez les professionnels médicaux qui font confiance à CARA pour des résultats exceptionnels. Demandez votre accès maintenant et commencez à transformer des vies.",
             button_whatsapp: "Demander l'Accès Professionnel",
-            button_contact: "Nous Parler"
+            button_pending: "Compte en cours d'examen — veuillez attendre l'approbation de l'équipe CARA Fillers.",
+            pending_desc: "Votre compte est actuellement en cours d'examen. Un membre de l'équipe CARA Fillers examinera bientôt vos informations. Vous serez averti dès que votre compte sera approuvé.",
+            button_contact: "Nous Parler",
+            button_products: "Voir les Produits"
         },
         about: {
             title: "À Propos de CARA",

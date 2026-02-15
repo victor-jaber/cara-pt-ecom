@@ -4,6 +4,7 @@ import { useLocationContext } from "@/contexts/LocationContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useGuestCart } from "@/contexts/GuestCartContext";
 import { clearStoredAuthUser } from "@/lib/authPersistence";
+import { getUserInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -72,15 +73,7 @@ export function Header() {
     ? guestCart.items.reduce((acc, item) => acc + item.quantity, 0)
     : apiCartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  const getInitials = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
+  const getInitials = () => getUserInitials(user, "U");
 
   const navLinks = [
     { href: "/", label: t("nav.home"), icon: Home, requiresAccess: false },
@@ -91,13 +84,22 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center justify-between gap-2 md:gap-4 px-4">
+      <div className="container mx-auto flex h-20 items-center justify-between gap-2 md:gap-4 px-4">
         <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
-          <Link href="/" data-testid="link-home" className="flex items-center gap-3 flex-shrink-0">
-            <img src="/logo.webp" alt="CARA" className="h-8 md:h-10" />
-            <span className="text-border h-6 border-l" />
-            <img src="/promipharm-logo.svg" alt="PROMIPHARM" className="h-8 md:h-10 dark:invert" />
-          </Link>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <Link href="/" data-testid="link-home" className="flex items-center">
+              <img src="/logo.webp" alt="CARA" className="h-10 md:h-12" />
+            </Link>
+            <span className="text-border h-8 border-l" />
+            <a
+              href="https://promipharm.com"
+              data-testid="link-promipharm"
+              className="flex items-center"
+              aria-label="PROMIPHARM"
+            >
+              <img src="/promipharm-logo.svg" alt="PROMIPHARM" className="h-10 md:h-12 dark:invert" />
+            </a>
+          </div>
 
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
@@ -107,7 +109,7 @@ export function Header() {
                 <Link key={link.href} href={link.href}>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="default"
                     className={isActive ? "bg-accent" : ""}
                     data-testid={`link-${link.label.toLowerCase()}`}
                   >
@@ -121,24 +123,24 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <div
-            className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-sm"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-muted-foreground text-base"
             data-testid="location-indicator"
           >
             {isPortugal ? (
               <>
-                <span className="text-base leading-none">🇵🇹</span>
+                <span className="text-lg leading-none">🇵🇹</span>
                 <span className="hidden sm:inline">Portugal</span>
               </>
             ) : (
               <>
-                <span className="text-base leading-none">🌍</span>
+                <span className="text-lg leading-none">🌍</span>
                 <span className="hidden sm:inline">Internacional</span>
               </>
             )}
           </div>
 
           <Select value={language} onValueChange={(val: any) => setLanguage(val)}>
-            <SelectTrigger className="w-[70px] h-8 gap-1 border-none bg-transparent focus:ring-0 px-2" data-testid="language-selector">
+            <SelectTrigger className="w-[70px] h-10 gap-1 border-none bg-transparent focus:ring-0 px-2 text-base" data-testid="language-selector">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -154,7 +156,7 @@ export function Header() {
               {canAccessProducts && (
                 <Link href="/carrinho">
                   <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
-                    <ShoppingCart className="h-5 w-5" />
+                    <ShoppingCart className="h-6 w-6" />
                     {cartCount > 0 && (
                       <Badge
                         variant="default"
@@ -170,9 +172,9 @@ export function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full" data-testid="button-user-menu">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.profileImageUrl || undefined} />
-                      <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
+                      <AvatarFallback className="text-sm">{getInitials()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -234,7 +236,7 @@ export function Header() {
             <div className="flex items-center gap-2">
               <Link href="/carrinho">
                 <Button variant="ghost" size="icon" className="relative" data-testid="button-cart">
-                  <ShoppingCart className="h-5 w-5" />
+                  <ShoppingCart className="h-6 w-6" />
                   {cartCount > 0 && (
                     <Badge
                       variant="default"
@@ -246,12 +248,12 @@ export function Header() {
                 </Button>
               </Link>
               <Link href="/login" className="hidden md:block">
-                <Button variant="ghost" size="sm" data-testid="button-login">
+                <Button variant="ghost" size="default" data-testid="button-login">
                   {t("nav.login")}
                 </Button>
               </Link>
               <Link href="/login?tab=register" className="hidden md:block">
-                <Button size="sm" data-testid="button-register">
+                <Button size="default" data-testid="button-register">
                   {t("nav.register")}
                 </Button>
               </Link>
@@ -259,12 +261,12 @@ export function Header() {
           ) : (
             <div className="hidden md:flex items-center gap-2">
               <Link href="/login">
-                <Button variant="ghost" size="sm" data-testid="button-login">
+                <Button variant="ghost" size="default" data-testid="button-login">
                   {t("nav.login")}
                 </Button>
               </Link>
               <Link href="/login?tab=register">
-                <Button size="sm" data-testid="button-register">
+                <Button size="default" data-testid="button-register">
                   {t("nav.request_access")}
                 </Button>
               </Link>
@@ -274,7 +276,7 @@ export function Header() {
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" data-testid="button-mobile-menu">
-                <Menu className="h-5 w-5" />
+                <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-hidden [&>button]:hidden">
