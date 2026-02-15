@@ -3,10 +3,11 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
 import { sendEmail } from "./email";
-import { orderConfirmedEmail } from "./email-templates/orders";
+import { orderConfirmedEmail, orderCreatedEmail } from "./email-templates/orders";
 
 type PendingStripePayment = {
   userId: string;
+  orderId: string;
   cartSnapshot: Array<{ productId: string; quantity: number; price: string; name: string }>;
   total: string;
   createdAt: number;
@@ -130,8 +131,46 @@ export async function createStripePaymentIntent(req: Request, res: Response) {
       },
     });
 
+    const orderItems = cartSnapshot.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      orderId: "",
+    }));
+
+    const order = await storage.createOrder(
+      {
+        userId: user.id,
+        total: total.toFixed(2),
+        shippingAddress: shippingAddress || user.clinicAddress || "",
+        notes: notes || "",
+        status: "pending",
+        paymentMethod: "stripe",
+        paymentStatus: "pending",
+        shippingOptionId: selectedShipping ? selectedShipping.id : null,
+        shippingCost: shippingCost.toFixed(2),
+        shippingOptionName: shippingOptionName || null,
+        paymentMetadata: {
+          stripePaymentIntentId: paymentIntent.id,
+        },
+      } as any,
+      orderItems,
+    );
+
+    if (source === "server_cart") {
+      await storage.clearCart(user.id);
+    }
+
+    // Send order created email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${order.id} criado`,
+      html: orderCreatedEmail(order, user.firstName),
+    }).catch((err) => console.error("Failed to send order created email:", err));
+
     pendingStripePayments.set(paymentIntent.id, {
       userId: user.id,
+      orderId: order.id,
       cartSnapshot,
       total: total.toFixed(2),
       createdAt: Date.now(),
@@ -184,48 +223,38 @@ export async function confirmStripePayment(req: Request, res: Response) {
       return res.status(400).json({ message: "Payment not completed" });
     }
 
-    const orderItems = pending.cartSnapshot.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      price: item.price,
-      orderId: "",
-    }));
+    const existingOrder = await storage.getOrderById(pending.orderId);
+    if (!existingOrder) {
+      pendingStripePayments.delete(paymentIntentId);
+      return res.status(400).json({ message: "Order not found for this payment" });
+    }
 
-    const order = await storage.createOrder(
-      {
-        userId: user.id,
-        total: pending.total,
-        shippingAddress: pending.shippingAddress || user.clinicAddress || "",
-        notes: pending.notes || "",
-        status: "confirmed",
-        paymentMethod: "stripe",
-        paymentStatus: "completed",
-        shippingOptionId: pending.shippingOptionId || null,
-        shippingCost: pending.shippingCost || "0.00",
-        shippingOptionName: pending.shippingOptionName || null,
-        paymentMetadata: {
-          stripePaymentIntentId: paymentIntentId,
-        },
-      } as any,
-      orderItems,
-    );
+    const mergedMetadata = {
+      ...((existingOrder as any).paymentMetadata || {}),
+      stripePaymentIntentId: paymentIntentId,
+    };
+
+    const updatedOrder = await storage.updateOrderPayment(existingOrder.id, {
+      status: "confirmed",
+      paymentMethod: "stripe",
+      paymentStatus: "completed",
+      paymentMetadata: mergedMetadata,
+    } as any);
+
+    const orderForEmail = updatedOrder || existingOrder;
 
     pendingStripePayments.delete(paymentIntentId);
-
-    if (pending.source === "server_cart") {
-      await storage.clearCart(user.id);
-    }
 
     // Send order confirmed email (async, don't wait for it)
     sendEmail({
       to: user.email,
-      subject: `Pedido #${order.id} confirmado`,
-      html: orderConfirmedEmail(order, user.firstName),
+      subject: `Pedido #${orderForEmail.id} confirmado`,
+      html: orderConfirmedEmail(orderForEmail as any, user.firstName),
     }).catch(err => console.error('Failed to send order confirmed email:', err));
 
     return res.json({
       success: true,
-      orderId: order.id,
+      orderId: orderForEmail.id,
       paymentIntentId,
     });
   } catch (error: any) {

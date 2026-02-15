@@ -663,6 +663,13 @@ export async function registerRoutes(
         orderItems
       );
 
+      // Send order created email (async, don't wait for it)
+      sendEmail({
+        to: user.email,
+        subject: `Pedido #${order.id} criado`,
+        html: orderCreatedEmail(order, user.firstName),
+      }).catch(err => console.error('Failed to send order created email:', err));
+
       res.json(order);
     } catch (error) {
       console.error("Error creating international order:", error);
@@ -767,6 +774,13 @@ export async function registerRoutes(
         orderItems
       );
 
+      // Send order created email to the guest (async, don't wait for it)
+      sendEmail({
+        to: guestEmail,
+        subject: `Pedido #${order.id} criado`,
+        html: orderCreatedEmail(order, guestName),
+      }).catch(err => console.error('Failed to send guest order created email:', err));
+
       res.json(order);
     } catch (error) {
       console.error("Error creating guest order:", error);
@@ -867,13 +881,16 @@ export async function registerRoutes(
       }
 
       // Send email notifications for status changes (async, don't wait for it)
-      if (status === 'shipped' || status === 'delivered') {
+      if (status === 'confirmed' || status === 'shipped' || status === 'delivered') {
         const user = await storage.getUser(order.userId);
         if (user) {
           let emailHtml: string;
           let emailSubject: string;
 
-          if (status === 'shipped') {
+          if (status === 'confirmed') {
+            emailSubject = `Pedido #${order.id} confirmado`;
+            emailHtml = orderConfirmedEmail(order, user.firstName);
+          } else if (status === 'shipped') {
             emailSubject = `Pedido #${order.id} enviado`;
             emailHtml = orderShippedEmail(order, user.firstName);
           } else {
@@ -1272,4 +1289,3 @@ export async function registerRoutes(
 
   return httpServer;
 }
-import { registerVerificationRoutes } from "./verification-routes";

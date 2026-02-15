@@ -17,7 +17,6 @@ type RegistrationStep = "email_verification" | "complete";
 
 export function MultiStepRegister({ formData, onBack }: MultiStepRegisterProps) {
     const [step, setStep] = useState<RegistrationStep>("email_verification");
-    const [verificationId, setVerificationId] = useState<string>("");
     const [, setLocation] = useLocation();
     const { toast } = useToast();
     const { location: userLocation, isInternational } = useLocationContext();
@@ -25,7 +24,7 @@ export function MultiStepRegister({ formData, onBack }: MultiStepRegisterProps) 
 
     // Complete registration after email verification
     const registerMutation = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (verificationId: string) => {
             const dataWithLocation = {
                 ...formData,
                 location: userLocation || "portugal",
@@ -60,9 +59,8 @@ export function MultiStepRegister({ formData, onBack }: MultiStepRegisterProps) 
     });
 
     const handleVerified = (verId: string) => {
-        setVerificationId(verId);
         // Auto-complete registration after verification
-        registerMutation.mutate();
+        registerMutation.mutate(verId);
     };
 
     return (

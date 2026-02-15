@@ -1,7 +1,15 @@
 import crypto from 'crypto';
 import { db } from './db';
 import { emailVerifications } from '@shared/schema';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, gt, isNull } from 'drizzle-orm';
+
+function normalizeEmail(email: string) {
+    return email.trim().toLowerCase();
+}
+
+function normalizeCode(code: string) {
+    return code.trim();
+}
 
 // Generate secure 6-digit code
 export function generateVerificationCode(): string {
@@ -15,12 +23,15 @@ export async function createEmailVerification(
     type: 'registration' | 'email_change',
     userId?: string
 ) {
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedCode = normalizeCode(code);
+
     // Expiration: 15 minutes from now
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const [verification] = await db.insert(emailVerifications).values({
-        email,
-        code,
+        email: normalizedEmail,
+        code: normalizedCode,
         type,
         userId: userId || null,
         expiresAt,
@@ -35,15 +46,18 @@ export async function getEmailVerification(
     code: string,
     type: 'registration' | 'email_change'
 ) {
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedCode = normalizeCode(code);
+
     const [verification] = await db
         .select()
         .from(emailVerifications)
         .where(
             and(
-                eq(emailVerifications.email, email),
-                eq(emailVerifications.code, code),
+                eq(emailVerifications.email, normalizedEmail),
+                eq(emailVerifications.code, normalizedCode),
                 eq(emailVerifications.type, type),
-                eq(emailVerifications.verifiedAt, null)  // Not yet used
+                isNull(emailVerifications.verifiedAt)  // Not yet used
             )
         );
 
@@ -70,6 +84,7 @@ export async function hasRecentVerification(
     email: string,
     minutes: number = 15
 ): Promise<boolean> {
+    const normalizedEmail = normalizeEmail(email);
     const cutoff = new Date(Date.now() - minutes * 60 * 1000);
 
     const [recent] = await db
@@ -77,8 +92,8 @@ export async function hasRecentVerification(
         .from(emailVerifications)
         .where(
             and(
-                eq(emailVerifications.email, email),
-                lt(cutoff, emailVerifications.createdAt)
+                eq(emailVerifications.email, normalizedEmail),
+                gt(emailVerifications.createdAt, cutoff)
             )
         )
         .limit(1);
@@ -91,6 +106,7 @@ export async function countRecentVerificationAttempts(
     email: string,
     minutes: number = 15
 ): Promise<number> {
+    const normalizedEmail = normalizeEmail(email);
     const cutoff = new Date(Date.now() - minutes * 60 * 1000);
 
     const results = await db
@@ -98,8 +114,8 @@ export async function countRecentVerificationAttempts(
         .from(emailVerifications)
         .where(
             and(
-                eq(emailVerifications.email, email),
-                lt(cutoff, emailVerifications.createdAt)
+                eq(emailVerifications.email, normalizedEmail),
+                gt(emailVerifications.createdAt, cutoff)
             )
         );
 

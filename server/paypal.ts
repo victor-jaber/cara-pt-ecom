@@ -8,12 +8,15 @@ import {
 import { storage } from "./storage";
 import type { Request, Response } from "express";
 import { findShippingOptionOrNull, getHardcodedShippingOptions } from "./shipping";
+import { sendEmail } from "./email";
+import { orderConfirmedEmail, orderCreatedEmail } from "./email-templates/orders";
 
 let cachedClient: Client | null = null;
 let cachedSettings: { clientId: string; mode: string } | null = null;
 
 interface PendingPayPalOrder {
   userId: string;
+  orderId: string;
   cartSnapshot: Array<{
     productId: string;
     quantity: number;
@@ -105,7 +108,7 @@ export async function createPaypalOrder(req: Request, res: Response) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const { shippingOptionId, countryCode, region } = req.body || {};
+    const { shippingOptionId, countryCode, region, shippingAddress = "", notes = "" } = req.body || {};
 
     const cartItems = await storage.getCartItems(user.id);
     if (cartItems.length === 0) {
@@ -173,9 +176,46 @@ export async function createPaypalOrder(req: Request, res: Response) {
     });
 
     const paypalOrderId = (response.result as any).id;
+
+    const orderItems = cartSnapshot.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      orderId: "",
+    }));
+
+    const order = await storage.createOrder(
+      {
+        userId: user.id,
+        total: total.toFixed(2),
+        shippingAddress: shippingAddress || user.clinicAddress || "",
+        notes: notes || "",
+        status: "pending",
+        paymentMethod: "paypal",
+        paymentStatus: "pending",
+        paypalOrderId,
+        shippingOptionId: shippingOptionId || null,
+        shippingCost: shippingCost.toFixed(2),
+        shippingOptionName: shippingOptionName || null,
+        paymentMetadata: {
+          paypalOrderId,
+        },
+      } as any,
+      orderItems,
+    );
+
+    await storage.clearCart(user.id);
+
+    // Send order created email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${order.id} criado`,
+      html: orderCreatedEmail(order, user.firstName),
+    }).catch((err) => console.error("Failed to send order created email:", err));
     
     pendingPayPalOrders.set(paypalOrderId, {
       userId: user.id,
+      orderId: order.id,
       cartSnapshot,
       total: total.toFixed(2),
       createdAt: Date.now(),
@@ -242,39 +282,49 @@ export async function capturePaypalOrder(req: Request, res: Response) {
     const captureId = captureResult?.purchaseUnits?.[0]?.payments?.captures?.[0]?.id || "";
     const payerEmail = captureResult?.payer?.emailAddress || "";
 
-    const orderItems = pendingOrder.cartSnapshot.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      price: item.price,
-      orderId: "",
-    }));
-
     const { shippingAddress = "", notes = "" } = req.body || {};
 
-    const order = await storage.createOrder(
-      {
-        userId: user.id,
-        total: pendingOrder.total,
-        shippingAddress: shippingAddress || user.clinicAddress || "",
-        notes,
-        status: "confirmed",
-        paymentMethod: "paypal",
-        paypalOrderId: orderID,
-        paypalCaptureId: captureId,
-        shippingOptionId: pendingOrder.shippingOptionId || null,
-        shippingCost: pendingOrder.shippingCost || "0.00",
-        shippingOptionName: pendingOrder.shippingOptionName || null,
-      },
-      orderItems
-    );
+    const existingOrder = await storage.getOrderById(pendingOrder.orderId);
+    if (!existingOrder) {
+      pendingPayPalOrders.delete(orderID);
+      return res.status(400).json({ error: "Order not found for this PayPal order" });
+    }
+
+    const mergedMetadata = {
+      ...((existingOrder as any).paymentMetadata || {}),
+      paypalOrderId: orderID,
+      paypalCaptureId: captureId,
+      payerEmail,
+    };
+
+    const updatedOrder = await storage.updateOrderPayment(existingOrder.id, {
+      status: "confirmed",
+      paymentMethod: "paypal",
+      paymentStatus: "completed",
+      paypalOrderId: orderID,
+      paypalCaptureId: captureId,
+      shippingAddress: shippingAddress || existingOrder.shippingAddress || user.clinicAddress || "",
+      notes: notes || existingOrder.notes || "",
+      shippingOptionId: pendingOrder.shippingOptionId || existingOrder.shippingOptionId || null,
+      shippingCost: pendingOrder.shippingCost || (existingOrder as any).shippingCost || "0.00",
+      shippingOptionName: pendingOrder.shippingOptionName || existingOrder.shippingOptionName || null,
+      paymentMetadata: mergedMetadata,
+    } as any);
+
+    const orderForEmail = updatedOrder || existingOrder;
+
+    // Send order confirmed email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${orderForEmail.id} confirmado`,
+      html: orderConfirmedEmail(orderForEmail as any, user.firstName),
+    }).catch((err) => console.error("Failed to send order confirmed email:", err));
 
     pendingPayPalOrders.delete(orderID);
 
-    await storage.clearCart(user.id);
-
     return res.json({
       success: true,
-      orderId: order.id,
+      orderId: orderForEmail.id,
       paypalOrderId: orderID,
       paypalCaptureId: captureId,
       payerEmail,

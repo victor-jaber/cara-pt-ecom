@@ -33,9 +33,10 @@ export function registerVerificationRoutes(app: Express) {
         try {
             const validated = sendVerificationCodeSchema.parse(req.body);
             const { email, type } = validated;
+            const normalizedEmail = email.trim().toLowerCase();
 
             // Rate limiting: max 3 codes per 15 minutes
-            const recentAttempts = await countRecentVerificationAttempts(email, 15);
+            const recentAttempts = await countRecentVerificationAttempts(normalizedEmail, 15);
             if (recentAttempts >= 3) {
                 return res.status(429).json({
                     message: "Demasiadas tentativas. Tente novamente em 15 minutos.",
@@ -44,7 +45,7 @@ export function registerVerificationRoutes(app: Express) {
 
             // For registration, check if email already exists
             if (type === "registration") {
-                const existingUser = await storage.getUserByEmail(email);
+                const existingUser = await storage.getUserByEmail(normalizedEmail);
                 if (existingUser) {
                     return res.status(400).json({ message: "Este email já está registado" });
                 }
@@ -52,11 +53,11 @@ export function registerVerificationRoutes(app: Express) {
 
             // Generate and store verification code
             const code = generateVerificationCode();
-            await createEmailVerification(email, code, type);
+            await createEmailVerification(normalizedEmail, code, type);
 
             // Send email
             await sendEmail({
-                to: email,
+                to: email.trim(),
                 subject: type === "registration"
                     ? "Código de Verificação - Novo Registro"
                     : "Código de Verificação - Alteração de Email",
@@ -82,9 +83,11 @@ export function registerVerificationRoutes(app: Express) {
         try {
             const validated = verifyEmailCodeSchema.parse(req.body);
             const { email, code, type } = validated;
+            const normalizedEmail = email.trim().toLowerCase();
+            const normalizedCode = code.trim();
 
             // Get verification record
-            const verification = await getEmailVerification(email, code, type);
+            const verification = await getEmailVerification(normalizedEmail, normalizedCode, type);
 
             if (!verification) {
                 return res.status(400).json({ message: "Código inválido ou expirado" });

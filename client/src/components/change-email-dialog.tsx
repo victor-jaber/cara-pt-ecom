@@ -62,11 +62,11 @@ export function ChangeEmailDialog({ open, onOpenChange, currentEmail }: ChangeEm
     const changeEmailMutation = useMutation({
         mutationFn: async (verificationCode: string) => {
             // First verify the code
-            const verifyRes = await apiRequest("POST", "/api/auth/verify-email-code", {
+            const verifyRes = await (await apiRequest("POST", "/api/auth/verify-email-code", {
                 email: newEmail,
                 code: verificationCode,
                 type: "email_change",
-            });
+            })).json();
 
             // Then update the email with verificationId
             const updateRes = await apiRequest("PUT", "/api/user/profile", {

@@ -250,6 +250,13 @@ export async function createEupagoMultibancoOrder(req: Request, res: Response) {
       orderItems,
     );
 
+    // Send order created email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${order.id} criado`,
+      html: orderCreatedEmail(order, user.firstName),
+    }).catch((err) => console.error("Failed to send order created email:", err));
+
     if (source === "server_cart") {
       await storage.clearCart(user.id);
     }
@@ -427,6 +434,13 @@ export async function createEupagoMbwayOrder(req: Request, res: Response) {
       } as any,
       orderItems,
     );
+
+    // Send order created email (async, don't wait for it)
+    sendEmail({
+      to: user.email,
+      subject: `Pedido #${order.id} criado`,
+      html: orderCreatedEmail(order, user.firstName),
+    }).catch((err) => console.error("Failed to send order created email:", err));
 
     if (source === "server_cart") {
       await storage.clearCart(user.id);

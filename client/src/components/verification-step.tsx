@@ -23,7 +23,8 @@ export function VerificationStep({ email, type, onVerified, onBack }: Verificati
     // Send verification code
     const sendCodeMutation = useMutation({
         mutationFn: async () => {
-            return apiRequest("POST", "/api/auth/send-verification-code", { email, type });
+            const res = await apiRequest("POST", "/api/auth/send-verification-code", { email, type });
+            return res.json();
         },
         onSuccess: () => {
             toast({
@@ -53,7 +54,8 @@ export function VerificationStep({ email, type, onVerified, onBack }: Verificati
     // Verify code
     const verifyCodeMutation = useMutation({
         mutationFn: async (code: string) => {
-            return apiRequest("POST", "/api/auth/verify-email-code", { email, code, type });
+            const res = await apiRequest("POST", "/api/auth/verify-email-code", { email, code, type });
+            return res.json();
         },
         onSuccess: (data: any) => {
             toast({
