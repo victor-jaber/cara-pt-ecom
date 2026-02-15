@@ -21,6 +21,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+
+  // Register verification routes
+  registerVerificationRoutes(app);
   // Register endpoint
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -1217,3 +1220,4 @@ export async function registerRoutes(
 
   return httpServer;
 }
+import { registerVerificationRoutes } from "./verification-routes";

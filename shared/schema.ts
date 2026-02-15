@@ -168,7 +168,26 @@ export const shippingOptions = pgTable("shipping_options", {
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+})
+
+// Email Verifications table
+export const verificationTypeEnum = pgEnum("verification_type", ["registration", "email_change"]);
+
+export const emailVerifications = pgTable("email_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  code: varchar("code", { length: 6 }).notNull(),
+  type: verificationTypeEnum("type").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_email_verifications_email").on(table.email),
+  index("idx_email_verifications_code").on(table.code),
+  index("idx_email_verifications_expires").on(table.expiresAt),
+]);
+
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -281,6 +300,13 @@ export const insertShippingOptionSchema = createInsertSchema(shippingOptions).om
   updatedAt: true,
 });
 
+export const insertEmailVerificationSchema = createInsertSchema(emailVerifications).omit({
+  id: true,
+  createdAt: true,
+  verifiedAt: true,
+});
+
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -321,3 +347,6 @@ export type InsertEupagoSettings = z.infer<typeof insertEupagoSettingsSchema>;
 
 export type ShippingOption = typeof shippingOptions.$inferSelect;
 export type InsertShippingOption = z.infer<typeof insertShippingOptionSchema>;
+
+export type EmailVerification = typeof emailVerifications.$inferSelect;
+export type InsertEmailVerification = z.infer<typeof insertEmailVerificationSchema>;

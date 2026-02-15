@@ -29,9 +29,12 @@ import {
   type InsertEupagoSettings,
   type ShippingOption,
   type InsertShippingOption,
+  emailVerifications,
+  type EmailVerification,
+  type InsertEmailVerification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
