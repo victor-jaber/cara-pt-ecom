@@ -24,14 +24,50 @@ export async function registerRoutes(
 
   // Register verification routes
   registerVerificationRoutes(app);
-  // Register endpoint
+  // Register endpoint - REQUIRES EMAIL VERIFICATION
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const validated = registerSchema.parse(req.body);
+      // Extended schema to include verificationId
+      const extendedRegisterSchema = registerSchema.extend({
+        verificationId: z.string().min(1, "Verificação de email é obrigatória"),
+      });
+      
+      const validated = extendedRegisterSchema.parse(req.body);
 
       // Enforce terms acceptance - required for GDPR compliance
       if (!validated.acceptTerms) {
         return res.status(400).json({ message: "Deve aceitar as políticas de privacidade" });
+      }
+
+      // Verify email verification exists and is valid
+      const { getEmailVerification, markVerificationUsed } = await import("./email-verification");
+      const db = await import("./db");
+      const { emailVerifications } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const [verification] = await db.db
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.id, validated.verificationId));
+      
+      if (!verification) {
+        return res.status(400).json({ message: "Verificação de email inválida" });
+      }
+
+      if (verification.email !== validated.email) {
+        return res.status(400).json({ message: "Email não corresponde à verificação" });
+      }
+
+      if (verification.type !== "registration") {
+        return res.status(400).json({ message: "Tipo de verificação inválido" });
+      }
+
+      if (verification.verifiedAt) {
+        return res.status(400).json({ message: "Esta verificação já foi utilizada" });
+      }
+
+      if (new Date() > new Date(verification.expiresAt)) {
+        return res.status(400).json({ message: "Verificação expirada" });
       }
 
       // Check if email already exists
@@ -43,7 +79,7 @@ export async function registerRoutes(
       // Hash password
       const passwordHash = await hashPassword(validated.password);
 
-      // Auto-approve international users
+      // PRESERVE GEOLOCATION LOGIC: Auto-approve international users
       const userStatus = validated.location === "international" ? "approved" : "pending";
 
       // Create user
@@ -58,6 +94,9 @@ export async function registerRoutes(
         status: userStatus,
         role: "customer",
       });
+
+      // Mark verification as used
+      await markVerificationUsed(verification.id);
 
       // Send welcome email (async, don't wait for it)
       sendEmail({
