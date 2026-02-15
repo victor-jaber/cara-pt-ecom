@@ -72,7 +72,7 @@ export default function Checkout() {
 
   // International users must register/login to checkout (they get auto-approved)
   const needsAuth = isInternational && !isAuthenticated;
-  
+
   // International users always use guest cart (localStorage) for reliability
   // Portugal users use API cart (requires authentication)
   const useGuestCartItems = isInternational;
@@ -86,13 +86,13 @@ export default function Checkout() {
 
   const cartItems: CartItemWithProduct[] = useGuestCartItems
     ? guestCart.items.map((item: GuestCartItem) => ({
-        id: item.id,
-        userId: "guest",
-        productId: item.product.id,
-        quantity: item.quantity,
-        createdAt: null,
-        product: item.product,
-      }))
+      id: item.id,
+      userId: "guest",
+      productId: item.product.id,
+      quantity: item.quantity,
+      createdAt: null,
+      product: item.product,
+    }))
     : apiCartItems;
 
   const eupagoItems = useGuestCartItems
@@ -167,7 +167,7 @@ export default function Checkout() {
           quantity: item.quantity,
           price: calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity,
         }));
-        
+
         const response = await apiRequest("POST", "/api/international-orders", {
           userId: user.id,
           shippingAddress: data.shippingAddress,
@@ -179,7 +179,7 @@ export default function Checkout() {
         });
         return response;
       }
-      
+
       // Portugal users use the regular orders endpoint (session-based)
       const response = await apiRequest("POST", "/api/orders", {
         ...data,
@@ -218,7 +218,7 @@ export default function Checkout() {
         quantity: item.quantity,
         price: calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) / item.quantity,
       }));
-      
+
       const response = await apiRequest("POST", "/api/guest-orders", {
         guestName: data.guestName,
         guestEmail: data.guestEmail,
@@ -278,7 +278,7 @@ export default function Checkout() {
   };
 
   // All users must be authenticated now, so only use the regular form validation
-  const isFormValid = form.watch("shippingAddress")?.length >= 10 && 
+  const isFormValid = form.watch("shippingAddress")?.length >= 10 &&
     (shippingOptions.length === 0 || selectedShippingId);
 
   const canPay = isFormValid && !!paymentChoice;
@@ -371,11 +371,10 @@ export default function Checkout() {
               {shippingOptions.map((option) => (
                 <div
                   key={option.id}
-                  className={`flex items-start gap-3 p-4 rounded-md border cursor-pointer transition-colors ${
-                    selectedShippingId === option.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/50"
-                  }`}
+                  className={`flex items-start gap-3 p-4 rounded-md border cursor-pointer transition-colors ${selectedShippingId === option.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50"
+                    }`}
                   onClick={() => setSelectedShippingId(option.id)}
                 >
                   <RadioGroupItem
@@ -439,7 +438,7 @@ export default function Checkout() {
           const originalTotal = Number(item.product.price) * item.quantity;
           const discountedTotal = calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules);
           const hasDiscount = applicableRule !== null;
-          
+
           return (
             <div key={item.id} className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -551,18 +550,65 @@ export default function Checkout() {
       <CardFooter className="hidden lg:flex lg:flex-col lg:gap-4">
         <div className="w-full space-y-3">
           <div className="text-sm font-medium">Método de pagamento</div>
-          <Select value={paymentChoice} onValueChange={(v) => setPaymentChoice(v as any)}>
-            <SelectTrigger data-testid="select-payment-method">
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              {availablePaymentChoices.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          <div className="grid grid-cols-1 gap-3">
+            {availablePaymentChoices.map((choice) => {
+              const isSelected = paymentChoice === choice.value;
+
+              // Map payment methods to icons and descriptions
+              const methodInfo: Record<string, { icon: string; description: string }> = {
+                paypal: { icon: "💳", description: "Pague com PayPal ou cartão" },
+                stripe: { icon: "💳", description: "Pague com cartão de crédito" },
+                eupago_multibanco: { icon: "🏦", description: "Referência Multibanco" },
+                eupago_mbway: { icon: "📱", description: "Pagamento instantâneo MB WAY" },
+              };
+
+              const info = methodInfo[choice.value] || { icon: "💰", description: "" };
+
+              return (
+                <div
+                  key={choice.value}
+                  onClick={() => setPaymentChoice(choice.value)}
+                  className={`
+                    relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200
+                    hover:scale-[1.02] hover:shadow-md
+                    ${isSelected
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border bg-background hover:border-primary/50"
+                    }
+                  `}
+                  data-testid={`payment-card-${choice.value}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{info.icon}</div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">{choice.label}</div>
+                      {info.description && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{info.description}</div>
+                      )}
+                    </div>
+                    {isSelected && (
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-4 h-4"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
 
           {paymentChoice === "paypal" && (
             <PayPalButton
@@ -683,8 +729,9 @@ export default function Checkout() {
                 }
                 queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
                 toast({
-                  title: "Pedido criado",
-                  description: "Pedido MBWay enviado. Confirme na app para concluir.",
+                  title: "✅ Pedido criado com sucesso!",
+                  description: "🚨 Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
+                  duration: 8000,
                 });
                 setLocation(`/pedido/${details.orderId}`);
               }}
@@ -715,223 +762,270 @@ export default function Checkout() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-            <Form {...form}>
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dados de Envio</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Nome</label>
-                        <Input
-                          value={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "-"}
-                          disabled
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Email</label>
-                        <Input value={user?.email || "-"} disabled className="mt-1" />
-                      </div>
+          <Form {...form}>
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados de Envio</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Nome</label>
+                      <Input
+                        value={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "-"}
+                        disabled
+                        className="mt-1"
+                      />
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name="shippingAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Endereço de Envio</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Rua, número, código postal, cidade..."
-                              {...field}
-                              data-testid="input-shipping-address"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notas (opcional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Instruções especiais de entrega..."
-                              {...field}
-                              data-testid="input-notes"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <ShippingOptionsSection />
-                <ProductsSection />
-
-                <div className="lg:hidden space-y-4">
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">Método de pagamento</div>
-                    <Select value={paymentChoice} onValueChange={(v) => setPaymentChoice(v as any)}>
-                      <SelectTrigger data-testid="select-payment-method-mobile">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePaymentChoices.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {paymentChoice === "paypal" && (
-                      <PayPalButton
-                        cart={cartItems.map((item) => {
-                          const unitPrice =
-                            calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) /
-                            item.quantity;
-                          return {
-                            price: unitPrice,
-                            quantity: item.quantity,
-                            name: item.product.name,
-                          };
-                        })}
-                        shippingAddress={form.watch("shippingAddress")}
-                        notes={form.watch("notes") || ""}
-                        shippingOptionId={selectedShippingId || undefined}
-                        countryCode={countryCode}
-                        region={region}
-                        disabled={!canPay}
-                        onSuccess={(details) => {
-                          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                          toast({
-                            title: "Pagamento realizado com sucesso",
-                            description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
-                          });
-                          setLocation("/meus-pedidos");
-                        }}
-                        onError={(error) => {
-                          toast({
-                            title: "Erro no pagamento",
-                            description: error.message || "Não foi possível processar o pagamento.",
-                            variant: "destructive",
-                          });
-                        }}
-                      />
-                    )}
-
-                    {paymentChoice === "stripe" && paymentSetup?.stripe?.publishableKey && (
-                      <StripePayment
-                        publishableKey={paymentSetup.stripe.publishableKey}
-                        shippingAddress={form.watch("shippingAddress")}
-                        notes={form.watch("notes") || ""}
-                        shippingOptionId={selectedShippingId || undefined}
-                        countryCode={countryCode}
-                        region={region}
-                        items={
-                          useGuestCartItems
-                            ? cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity }))
-                            : undefined
-                        }
-                        disabled={!canPay}
-                        onSuccess={(details) => {
-                          if (isInternational) {
-                            guestCart.clearCart();
-                          }
-                          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                          toast({
-                            title: "Pagamento realizado com sucesso",
-                            description: `Pedido confirmado via Stripe. ID: ${details.paymentIntentId}`,
-                          });
-                          setLocation("/meus-pedidos");
-                        }}
-                        onError={(error) => {
-                          toast({
-                            title: "Erro no pagamento",
-                            description: error.message || "Não foi possível processar o pagamento.",
-                            variant: "destructive",
-                          });
-                        }}
-                      />
-                    )}
-
-                    {paymentChoice === "eupago_multibanco" && (
-                      <EupagoPayment
-                        method="multibanco"
-                        shippingAddress={form.watch("shippingAddress")}
-                        notes={form.watch("notes") || ""}
-                        shippingOptionId={selectedShippingId || undefined}
-                        countryCode={countryCode}
-                        region={region}
-                        items={eupagoItems}
-                        disabled={!canPay}
-                        onSuccess={(details) => {
-                          if (isInternational) {
-                            guestCart.clearCart();
-                          }
-                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                          toast({
-                            title: "Pedido criado",
-                            description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
-                          });
-                          setLocation(`/pedido/${details.orderId}`);
-                        }}
-                        onError={(error) => {
-                          toast({
-                            title: "Erro no pagamento",
-                            description: error.message || "Não foi possível processar o pedido.",
-                            variant: "destructive",
-                          });
-                        }}
-                      />
-                    )}
-
-                    {paymentChoice === "eupago_mbway" && (
-                      <EupagoPayment
-                        method="mbway"
-                        shippingAddress={form.watch("shippingAddress")}
-                        notes={form.watch("notes") || ""}
-                        shippingOptionId={selectedShippingId || undefined}
-                        countryCode={countryCode}
-                        region={region}
-                        items={eupagoItems}
-                        disabled={!canPay}
-                        onSuccess={(details) => {
-                          if (isInternational) {
-                            guestCart.clearCart();
-                          }
-                          queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                          toast({
-                            title: "Pedido criado",
-                            description: "Pedido MBWay enviado. Confirme na app para concluir.",
-                          });
-                          setLocation(`/pedido/${details.orderId}`);
-                        }}
-                        onError={(error) => {
-                          toast({
-                            title: "Erro no pagamento",
-                            description: error.message || "Não foi possível processar o pedido.",
-                            variant: "destructive",
-                          });
-                        }}
-                      />
-                    )}
+                    <div>
+                      <label className="text-sm font-medium">Email</label>
+                      <Input value={user?.email || "-"} disabled className="mt-1" />
+                    </div>
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="shippingAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Endereço de Envio</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Rua, número, código postal, cidade..."
+                            {...field}
+                            data-testid="input-shipping-address"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notas (opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Instruções especiais de entrega..."
+                            {...field}
+                            data-testid="input-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <ShippingOptionsSection />
+              <ProductsSection />
+
+              <div className="lg:hidden space-y-4">
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Método de pagamento</div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {availablePaymentChoices.map((choice) => {
+                      const isSelected = paymentChoice === choice.value;
+
+                      // Map payment methods to icons and descriptions
+                      const methodInfo: Record<string, { icon: string; description: string }> = {
+                        paypal: { icon: "💳", description: "Pague com PayPal ou cartão" },
+                        stripe: { icon: "💳", description: "Pague com cartão de crédito" },
+                        eupago_multibanco: { icon: "🏦", description: "Referência Multibanco" },
+                        eupago_mbway: { icon: "📱", description: "Pagamento instantâneo MB WAY" },
+                      };
+
+                      const info = methodInfo[choice.value] || { icon: "💰", description: "" };
+
+                      return (
+                        <div
+                          key={choice.value}
+                          onClick={() => setPaymentChoice(choice.value)}
+                          className={`
+                            relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200
+                            active:scale-[0.98]
+                            ${isSelected
+                              ? "border-primary bg-primary/5 shadow-sm"
+                              : "border-border bg-background"
+                            }
+                          `}
+                          data-testid={`payment-card-mobile-${choice.value}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="text-3xl">{info.icon}</div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-sm">{choice.label}</div>
+                              {info.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5">{info.description}</div>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="w-4 h-4"
+                                >
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {paymentChoice === "paypal" && (
+                    <PayPalButton
+                      cart={cartItems.map((item) => {
+                        const unitPrice =
+                          calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) /
+                          item.quantity;
+                        return {
+                          price: unitPrice,
+                          quantity: item.quantity,
+                          name: item.product.name,
+                        };
+                      })}
+                      shippingAddress={form.watch("shippingAddress")}
+                      notes={form.watch("notes") || ""}
+                      shippingOptionId={selectedShippingId || undefined}
+                      countryCode={countryCode}
+                      region={region}
+                      disabled={!canPay}
+                      onSuccess={(details) => {
+                        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                        toast({
+                          title: "Pagamento realizado com sucesso",
+                          description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
+                        });
+                        setLocation("/meus-pedidos");
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Erro no pagamento",
+                          description: error.message || "Não foi possível processar o pagamento.",
+                          variant: "destructive",
+                        });
+                      }}
+                    />
+                  )}
+
+                  {paymentChoice === "stripe" && paymentSetup?.stripe?.publishableKey && (
+                    <StripePayment
+                      publishableKey={paymentSetup.stripe.publishableKey}
+                      shippingAddress={form.watch("shippingAddress")}
+                      notes={form.watch("notes") || ""}
+                      shippingOptionId={selectedShippingId || undefined}
+                      countryCode={countryCode}
+                      region={region}
+                      items={
+                        useGuestCartItems
+                          ? cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity }))
+                          : undefined
+                      }
+                      disabled={!canPay}
+                      onSuccess={(details) => {
+                        if (isInternational) {
+                          guestCart.clearCart();
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                        toast({
+                          title: "Pagamento realizado com sucesso",
+                          description: `Pedido confirmado via Stripe. ID: ${details.paymentIntentId}`,
+                        });
+                        setLocation("/meus-pedidos");
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Erro no pagamento",
+                          description: error.message || "Não foi possível processar o pagamento.",
+                          variant: "destructive",
+                        });
+                      }}
+                    />
+                  )}
+
+                  {paymentChoice === "eupago_multibanco" && (
+                    <EupagoPayment
+                      method="multibanco"
+                      shippingAddress={form.watch("shippingAddress")}
+                      notes={form.watch("notes") || ""}
+                      shippingOptionId={selectedShippingId || undefined}
+                      countryCode={countryCode}
+                      region={region}
+                      items={eupagoItems}
+                      disabled={!canPay}
+                      onSuccess={(details) => {
+                        if (isInternational) {
+                          guestCart.clearCart();
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                        toast({
+                          title: "Pedido criado",
+                          description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
+                        });
+                        setLocation(`/pedido/${details.orderId}`);
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Erro no pagamento",
+                          description: error.message || "Não foi possível processar o pedido.",
+                          variant: "destructive",
+                        });
+                      }}
+                    />
+                  )}
+
+                  {paymentChoice === "eupago_mbway" && (
+                    <EupagoPayment
+                      method="mbway"
+                      shippingAddress={form.watch("shippingAddress")}
+                      notes={form.watch("notes") || ""}
+                      shippingOptionId={selectedShippingId || undefined}
+                      countryCode={countryCode}
+                      region={region}
+                      items={eupagoItems}
+                      disabled={!canPay}
+                      onSuccess={(details) => {
+                        if (isInternational) {
+                          guestCart.clearCart();
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                        toast({
+                          title: "✅ Pedido criado com sucesso!",
+                          description: "🚨 Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
+                          duration: 8000,
+                        });
+                        setLocation(`/pedido/${details.orderId}`);
+                      }}
+                      onError={(error) => {
+                        toast({
+                          title: "Erro no pagamento",
+                          description: error.message || "Não foi possível processar o pedido.",
+                          variant: "destructive",
+                        });
+                      }}
+                    />
+                  )}
                 </div>
-              </form>
-            </Form>
+              </div>
+            </form>
+          </Form>
         </div>
 
         <div>

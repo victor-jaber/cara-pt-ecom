@@ -179,10 +179,18 @@ export default function OrderConfirmation() {
       </div>
 
       {isEupago && order.paymentStatus !== "completed" && order.status !== "confirmed" && (
-        <Alert className="mb-6">
-          <AlertTitle>A aguardar pagamento</AlertTitle>
+        <Alert className="mb-6" variant={(order as any).paymentMethod === "eupago_mbway" ? "destructive" : "default"}>
+          <AlertTitle>
+            {(order as any).paymentMethod === "eupago_mbway" ? "⏱️ Ação Urgente Necessária" : "A aguardar pagamento"}
+          </AlertTitle>
           <AlertDescription>
-            Assim que o pagamento for confirmado, este pedido mudará automaticamente para <b>Confirmado</b>.
+            {(order as any).paymentMethod === "eupago_mbway" ? (
+              <>
+                <b>Tem apenas 5 minutos</b> para confirmar este pagamento no app MB WAY! Abra o app <b>agora mesmo</b> e aprove o pagamento pendente.
+              </>
+            ) : (
+              <>Assim que o pagamento for confirmado, este pedido mudará automaticamente para <b>Confirmado</b>.</>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -265,10 +273,18 @@ export default function OrderConfirmation() {
 
               {(order as any).paymentMethod === "eupago_mbway" && (
                 <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    1) Abra a app <b>MB WAY</b> no seu telemóvel.<br />
-                    2) Confirme o pagamento pendente para este pedido.<br />
-                    3) Após confirmar, o status será atualizado automaticamente.
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="text-2xl">📱</div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Agora mesmo:</div>
+                        <div className="text-sm text-amber-800 dark:text-amber-200">
+                          <b>1. Abra o app MB WAY</b> no seu telemóvel agora<br />
+                          <b>2. Confirme o pagamento pendente</b> (tem apenas 5 minutos!)<br />
+                          <b>3. Aguarde</b> - esta página atualizará automaticamente quando o pagamento for confirmado
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="rounded-lg border p-4 space-y-2">
