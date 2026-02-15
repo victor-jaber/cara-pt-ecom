@@ -12,7 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -137,7 +136,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                                     <FormControl>
                                         <Input type="email" placeholder={t("auth.register.emailPlaceholder")} {...field} data-testid="input-email-register" />
                                     </FormControl>
-                                    <FormDescription>{t("auth.register.emailLabel")}</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -180,7 +178,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                                     <FormControl>
                                         <Input placeholder={t("auth.register.phonePlaceholder")} {...field} data-testid="input-phone" />
                                     </FormControl>
-                                    <FormDescription>{t("auth.register.phoneDescription")}</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -206,7 +203,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>{t("auth.register.professionDescription")}</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
