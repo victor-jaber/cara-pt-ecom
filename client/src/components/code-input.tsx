@@ -20,7 +20,11 @@ export function CodeInput({
 
     // Sync value with digits
     useEffect(() => {
-        const newDigits = value.padEnd(length, "").split("").slice(0, length);
+        const newDigits = Array(length).fill("");
+        const chars = value.split("");
+        for (let i = 0; i < Math.min(chars.length, length); i++) {
+            newDigits[i] = chars[i];
+        }
         setDigits(newDigits);
     }, [value, length]);
 
