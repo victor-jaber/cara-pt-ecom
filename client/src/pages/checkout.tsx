@@ -9,14 +9,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck, Tag } from "lucide-react";
+import {
+  ShoppingCart, ArrowLeft, CheckCircle2, Loader2, Truck, Tag,
+  CreditCard, ChevronRight, Package, ShieldCheck, Clock, User,
+  Mail, MapPin, FileText, Sparkles, ShoppingBag
+} from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import type { CartItemWithProduct, ShippingOption } from "@shared/schema";
 import { PayPalButton } from "@/components/paypal-button";
@@ -70,11 +74,7 @@ export default function Checkout() {
   type PaymentChoice = "paypal" | "stripe" | "eupago_multibanco" | "eupago_mbway";
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | "">("");
 
-  // International users must register/login to checkout (they get auto-approved)
   const needsAuth = isInternational && !isAuthenticated;
-
-  // International users always use guest cart (localStorage) for reliability
-  // Portugal users use API cart (requires authentication)
   const useGuestCartItems = isInternational;
 
   const { data: apiCartItems = [], isLoading: isLoadingApiCart } = useQuery<CartItemWithProduct[]>({
@@ -86,13 +86,13 @@ export default function Checkout() {
 
   const cartItems: CartItemWithProduct[] = useGuestCartItems
     ? guestCart.items.map((item: GuestCartItem) => ({
-      id: item.id,
-      userId: "guest",
-      productId: item.product.id,
-      quantity: item.quantity,
-      createdAt: null,
-      product: item.product,
-    }))
+        id: item.id,
+        userId: "guest",
+        productId: item.product.id,
+        quantity: item.quantity,
+        createdAt: null,
+        product: item.product,
+      }))
     : apiCartItems;
 
   const eupagoItems = useGuestCartItems
@@ -103,6 +103,13 @@ export default function Checkout() {
     (acc, item) => acc + calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules),
     0,
   );
+
+  const regularTotal = cartItems.reduce(
+    (acc, item) => acc + Number(item.product.price) * item.quantity,
+    0,
+  );
+
+  const totalSavings = regularTotal - subtotal;
 
   const shippingOptionsUrl = `/api/shipping-options?countryCode=${encodeURIComponent(countryCode || "")}&region=${encodeURIComponent(region || "")}&subtotal=${encodeURIComponent(subtotal.toFixed(2))}`;
 
@@ -132,12 +139,17 @@ export default function Checkout() {
   const availablePaymentChoices = allPaymentChoices.filter((c) => c.enabled);
 
   useEffect(() => {
-    // Don't auto-select a payment method; user must choose explicitly.
-    // But if the currently selected method becomes unavailable (e.g. settings changed), clear it.
     if (!paymentChoice) return;
     if (availablePaymentChoices.some((c) => c.value === paymentChoice)) return;
     setPaymentChoice("");
   }, [paymentSetup?.paypal?.enabled, paymentSetup?.stripe?.enabled, paymentSetup?.eupago?.enabled, countryCode, paymentChoice]);
+
+  // Auto-select first shipping option
+  useEffect(() => {
+    if (shippingOptions.length > 0 && !selectedShippingId) {
+      setSelectedShippingId(shippingOptions[0].id);
+    }
+  }, [shippingOptions, selectedShippingId]);
 
   const form = useForm<CheckoutForm>({
     resolver: zodResolver(checkoutSchema),
@@ -160,7 +172,6 @@ export default function Checkout() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: CheckoutForm) => {
-      // International users use the international-orders endpoint with cart items in request
       if (isInternational && user) {
         const orderItems = cartItems.map(item => ({
           productId: item.product.id,
@@ -180,7 +191,6 @@ export default function Checkout() {
         return response;
       }
 
-      // Portugal users use the regular orders endpoint (session-based)
       const response = await apiRequest("POST", "/api/orders", {
         ...data,
         shippingOptionId: selectedShippingId || undefined,
@@ -190,7 +200,6 @@ export default function Checkout() {
       return response;
     },
     onSuccess: () => {
-      // Clear guest cart for international users
       if (isInternational) {
         guestCart.clearCart();
       }
@@ -277,7 +286,6 @@ export default function Checkout() {
     createGuestOrderMutation.mutate(data);
   };
 
-  // All users must be authenticated now, so only use the regular form validation
   const isFormValid = form.watch("shippingAddress")?.length >= 10 &&
     (shippingOptions.length === 0 || selectedShippingId);
 
@@ -287,152 +295,227 @@ export default function Checkout() {
 
   if (isLoading || isLoadingShipping) {
     return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Progress Steps Skeleton */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="h-8 w-24 bg-muted rounded-full animate-pulse" />
+                {i < 3 && <ChevronRight className="h-4 w-4 text-muted-foreground/50" />}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground">A carregar checkout...</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (cartItems.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="p-12 text-center">
-            <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-medium">O seu carrinho está vazio</h3>
-            <p className="text-muted-foreground mt-1">
-              Adicione produtos antes de finalizar a compra.
-            </p>
-            <Link href="/produtos">
-              <Button className="mt-4">Ver Produtos</Button>
-            </Link>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-2 mb-12">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm">
+              <ShoppingCart className="h-4 w-4" />
+              <span>Carrinho</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground font-medium text-sm">
+              <CreditCard className="h-4 w-4" />
+              <span>Checkout</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground font-medium text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Confirmado</span>
+            </div>
+          </div>
+
+          <Card className="border-0 shadow-lg overflow-hidden">
+            <CardContent className="p-0">
+              <div className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 p-12 text-center">
+                <div className="relative inline-block mb-6">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-150" />
+                  <div className="relative bg-background/80 backdrop-blur-sm p-6 rounded-full">
+                    <ShoppingBag className="h-16 w-16 text-primary/60" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">O seu carrinho está vazio</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Adicione produtos antes de finalizar a compra.
+                </p>
+                <Link href="/produtos">
+                  <Button size="lg" className="gap-2 px-8 rounded-full shadow-lg hover:shadow-xl transition-all">
+                    <Sparkles className="h-4 w-4" />
+                    Explorar Produtos
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   if (needsAuth) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Link href="/carrinho">
-          <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-cart">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao Carrinho
-          </Button>
-        </Link>
-
-        <Card className="max-w-md mx-auto">
-          <CardHeader className="text-center">
-            <CardTitle>Criar Conta para Finalizar</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-muted-foreground">
-              Para finalizar a sua compra, é necessário criar uma conta ou fazer login.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Clientes internacionais são aprovados automaticamente.
-            </p>
-            <div className="flex flex-col gap-3 pt-4">
-              <Link href="/login?tab=register&redirect=/checkout">
-                <Button className="w-full" data-testid="button-register-checkout">
-                  Criar Conta
-                </Button>
-              </Link>
-              <Link href="/login?redirect=/checkout">
-                <Button variant="outline" className="w-full" data-testid="button-login-checkout">
-                  Já tenho conta - Entrar
-                </Button>
-              </Link>
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm">
+              <ShoppingCart className="h-4 w-4" />
+              <span>Carrinho</span>
             </div>
-          </CardContent>
-        </Card>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium text-sm shadow-md">
+              <CreditCard className="h-4 w-4" />
+              <span>Checkout</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground font-medium text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Confirmado</span>
+            </div>
+          </div>
+
+          <Link href="/carrinho" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Carrinho
+          </Link>
+
+          <Card className="max-w-md mx-auto border-0 shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-6 text-center">
+              <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 mb-4">
+                <User className="h-8 w-8 text-primary" />
+              </div>
+              <CardHeader className="p-0 mb-2">
+                <CardTitle className="text-xl">Criar Conta para Finalizar</CardTitle>
+              </CardHeader>
+            </div>
+            <CardContent className="p-6 space-y-4 text-center">
+              <p className="text-muted-foreground">
+                Para finalizar a sua compra, é necessário criar uma conta ou fazer login.
+              </p>
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  Clientes internacionais são aprovados automaticamente!
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 pt-4">
+                <Link href="/login?tab=register&redirect=/checkout" className="w-full">
+                  <Button className="w-full h-12 rounded-xl shadow-md" data-testid="button-register-checkout">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Criar Conta
+                  </Button>
+                </Link>
+                <Link href="/login?redirect=/checkout" className="w-full">
+                  <Button variant="outline" className="w-full h-12 rounded-xl" data-testid="button-login-checkout">
+                    Já tenho conta - Entrar
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   const ShippingOptionsSection = () => (
-    <>
-      {shippingOptions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              Opção de Envio
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup
-              value={selectedShippingId}
-              onValueChange={setSelectedShippingId}
-              className="space-y-3"
-              data-testid="shipping-options-group"
+    <Card className="border-0 shadow-md overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Truck className="h-5 w-5 text-primary" />
+          Opção de Envio
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-5">
+        <RadioGroup
+          value={selectedShippingId}
+          onValueChange={setSelectedShippingId}
+          className="space-y-3"
+          data-testid="shipping-options-group"
+        >
+          {shippingOptions.map((option) => (
+            <div
+              key={option.id}
+              className={`relative flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                selectedShippingId === option.id
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/30 hover:bg-muted/50"
+              }`}
+              onClick={() => setSelectedShippingId(option.id)}
             >
-              {shippingOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={`flex items-start gap-3 p-4 rounded-md border cursor-pointer transition-colors ${selectedShippingId === option.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50"
-                    }`}
-                  onClick={() => setSelectedShippingId(option.id)}
+              <RadioGroupItem
+                value={option.id}
+                id={`shipping-${option.id}`}
+                className="data-[state=checked]:border-primary"
+                data-testid={`radio-shipping-${option.id}`}
+              />
+              <div className="flex-1 min-w-0">
+                <Label
+                  htmlFor={`shipping-${option.id}`}
+                  className="font-semibold cursor-pointer"
                 >
-                  <RadioGroupItem
-                    value={option.id}
-                    id={`shipping-${option.id}`}
-                    className="mt-0.5"
-                    data-testid={`radio-shipping-${option.id}`}
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor={`shipping-${option.id}`}
-                      className="font-medium cursor-pointer"
-                    >
-                      {option.name}
-                    </Label>
-                    {option.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {option.description}
-                      </p>
-                    )}
-                    {option.estimatedDays && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Entrega estimada: {option.estimatedDays} dias úteis
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="font-semibold">
-                      {Number(option.price) === 0 ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
-                      ) : (
-                        Number(option.price).toLocaleString("pt-PT", {
-                          style: "currency",
-                          currency: "EUR",
-                        })
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
-            {!selectedShippingId && (
-              <p className="text-sm text-destructive mt-3">
-                Por favor selecione uma opção de envio
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </>
+                  {option.name}
+                </Label>
+                {option.description && (
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {option.description}
+                  </p>
+                )}
+                {option.estimatedDays && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Clock className="h-3 w-3" />
+                    Entrega: {option.estimatedDays} dias úteis
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                {Number(option.price) === 0 ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 text-sm">
+                    Grátis
+                  </Badge>
+                ) : (
+                  <span className="font-bold text-lg">
+                    {Number(option.price).toLocaleString("pt-PT", {
+                      style: "currency",
+                      currency: "EUR",
+                    })}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </RadioGroup>
+        {!selectedShippingId && shippingOptions.length > 0 && (
+          <p className="text-sm text-destructive mt-3 flex items-center gap-1">
+            Por favor selecione uma opção de envio
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 
   const ProductsSection = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Produtos ({cartItems.length})</CardTitle>
+    <Card className="border-0 shadow-md overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Package className="h-5 w-5 text-primary" />
+          Produtos ({cartItems.length})
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-5 space-y-4">
         {cartItems.map((item) => {
           const applicableRule = getApplicablePromotionRule(item.quantity, item.product.promotionRules);
           const originalTotal = Number(item.product.price) * item.quantity;
@@ -440,33 +523,31 @@ export default function Checkout() {
           const hasDiscount = applicableRule !== null;
 
           return (
-            <div key={item.id} className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                  {item.product.image ? (
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-full h-full object-contain p-1"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">CARA</span>
+            <div key={item.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {item.product.image ? (
+                  <img
+                    src={item.product.image}
+                    alt={item.product.name}
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xs font-bold text-muted-foreground/30">CARA</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium line-clamp-1">{item.product.name}</p>
+                  {hasDiscount && (
+                    <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
+                      <Tag className="h-3 w-3 mr-1" />
+                      Promo
+                    </Badge>
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-sm">{item.product.name}</p>
-                    {hasDiscount && (
-                      <Badge variant="secondary" className="text-xs">
-                        <Tag className="h-3 w-3 mr-1" />
-                        Promo
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p>
-                </div>
+                <p className="text-sm text-muted-foreground">Qtd: {item.quantity}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 {hasDiscount ? (
                   <div className="flex flex-col items-end gap-0.5">
                     <span className="text-xs text-muted-foreground line-through">
@@ -475,7 +556,7 @@ export default function Checkout() {
                         currency: "EUR",
                       })}
                     </span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       {discountedTotal.toLocaleString("pt-PT", {
                         style: "currency",
                         currency: "EUR",
@@ -483,7 +564,7 @@ export default function Checkout() {
                     </span>
                   </div>
                 ) : (
-                  <p className="font-medium">
+                  <p className="font-bold">
                     {originalTotal.toLocaleString("pt-PT", {
                       style: "currency",
                       currency: "EUR",
@@ -498,30 +579,105 @@ export default function Checkout() {
     </Card>
   );
 
+  const PaymentMethodCard = ({ choice, isSelected }: { choice: { value: PaymentChoice; label: string }; isSelected: boolean }) => {
+    const methodInfo: Record<string, { icon: React.ReactNode; description: string }> = {
+      paypal: {
+        icon: <div className="text-2xl">💳</div>,
+        description: "Pague com PayPal ou cartão"
+      },
+      stripe: {
+        icon: <CreditCard className="h-6 w-6 text-primary" />,
+        description: "Pague com cartão de crédito"
+      },
+      eupago_multibanco: {
+        icon: <div className="text-2xl">🏦</div>,
+        description: "Referência Multibanco"
+      },
+      eupago_mbway: {
+        icon: <div className="text-2xl">📱</div>,
+        description: "Pagamento instantâneo MB WAY"
+      },
+    };
+
+    const info = methodInfo[choice.value] || { icon: <div className="text-2xl">💰</div>, description: "" };
+
+    return (
+      <div
+        onClick={() => setPaymentChoice(choice.value)}
+        className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+          isSelected
+            ? "border-primary bg-primary/5 shadow-md"
+            : "border-border bg-background hover:border-primary/40 hover:shadow-md"
+        }`}
+        data-testid={`payment-card-${choice.value}`}
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted">
+            {info.icon}
+          </div>
+          <div className="flex-1">
+            <div className="font-semibold">{choice.label}</div>
+            {info.description && (
+              <div className="text-sm text-muted-foreground mt-0.5">{info.description}</div>
+            )}
+          </div>
+          {isSelected && (
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const OrderSummaryCard = () => (
-    <Card className="sticky top-24">
-      <CardHeader>
-        <CardTitle>Resumo</CardTitle>
+    <Card className="border-0 shadow-lg overflow-hidden lg:sticky lg:top-24">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Resumo do Pedido
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-between text-sm">
-          <span>Subtotal</span>
-          <span>
+      <CardContent className="p-5 space-y-4">
+        {/* Subtotal */}
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">
+            Subtotal ({cartItems.length} {cartItems.length === 1 ? "produto" : "produtos"})
+          </span>
+          <span className="font-medium">
             {subtotal.toLocaleString("pt-PT", {
               style: "currency",
               currency: "EUR",
             })}
           </span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span>Envio</span>
-          <span data-testid="text-shipping-cost">
+
+        {/* Discount */}
+        {totalSavings > 0 && (
+          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
+            <span className="flex items-center gap-1">
+              <Tag className="h-4 w-4" />
+              Poupança
+            </span>
+            <span className="font-medium">
+              -{totalSavings.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+            </span>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* Shipping */}
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Envio</span>
+          <span className="font-medium" data-testid="text-shipping-cost">
             {shippingOptions.length === 0 ? (
               <span className="text-muted-foreground">-</span>
             ) : !selectedShippingId ? (
               <span className="text-muted-foreground">Selecione opção</span>
             ) : shippingCost === 0 ? (
-              <span className="text-emerald-600 dark:text-emerald-400">Grátis</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Grátis</span>
             ) : (
               shippingCost.toLocaleString("pt-PT", {
                 style: "currency",
@@ -531,85 +687,44 @@ export default function Checkout() {
           </span>
         </div>
         {selectedShipping && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Truck className="h-3 w-3" />
             {selectedShipping.name}
             {selectedShipping.estimatedDays && ` - ${selectedShipping.estimatedDays} dias úteis`}
           </p>
         )}
+
         <Separator />
-        <div className="flex justify-between font-semibold text-lg">
-          <span>Total</span>
-          <span data-testid="text-order-total">
+
+        {/* Total */}
+        <div className="flex justify-between items-center">
+          <span className="text-lg font-semibold">Total</span>
+          <span className="text-2xl font-bold text-primary" data-testid="text-order-total">
             {total.toLocaleString("pt-PT", {
               style: "currency",
               currency: "EUR",
             })}
           </span>
         </div>
-      </CardContent>
-      <CardFooter className="hidden lg:flex lg:flex-col lg:gap-4">
-        <div className="w-full space-y-3">
-          <div className="text-sm font-medium">Método de pagamento</div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {availablePaymentChoices.map((choice) => {
-              const isSelected = paymentChoice === choice.value;
-
-              // Map payment methods to icons and descriptions
-              const methodInfo: Record<string, { icon: string; description: string }> = {
-                paypal: { icon: "💳", description: "Pague com PayPal ou cartão" },
-                stripe: { icon: "💳", description: "Pague com cartão de crédito" },
-                eupago_multibanco: { icon: "🏦", description: "Referência Multibanco" },
-                eupago_mbway: { icon: "📱", description: "Pagamento instantâneo MB WAY" },
-              };
-
-              const info = methodInfo[choice.value] || { icon: "💰", description: "" };
-
-              return (
-                <div
-                  key={choice.value}
-                  onClick={() => setPaymentChoice(choice.value)}
-                  className={`
-                    relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200
-                    hover:scale-[1.02] hover:shadow-md
-                    ${isSelected
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border bg-background hover:border-primary/50"
-                    }
-                  `}
-                  data-testid={`payment-card-${choice.value}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">{info.icon}</div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">{choice.label}</div>
-                      {info.description && (
-                        <div className="text-xs text-muted-foreground mt-0.5">{info.description}</div>
-                      )}
-                    </div>
-                    {isSelected && (
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="w-4 h-4"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Payment Methods - Desktop */}
+        <div className="hidden lg:block space-y-4 pt-2">
+          <Separator />
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-primary" />
+            Método de Pagamento
+          </div>
+          <div className="space-y-3">
+            {availablePaymentChoices.map((choice) => (
+              <PaymentMethodCard
+                key={choice.value}
+                choice={choice}
+                isSelected={paymentChoice === choice.value}
+              />
+            ))}
           </div>
 
-
+          {/* Payment Buttons */}
           {paymentChoice === "paypal" && (
             <PayPalButton
               cart={cartItems.map((item) => {
@@ -729,8 +844,8 @@ export default function Checkout() {
                 }
                 queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
                 toast({
-                  title: "✅ Pedido criado com sucesso!",
-                  description: "🚨 Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
+                  title: "Pedido criado com sucesso!",
+                  description: "Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
                   duration: 8000,
                 });
                 setLocation(`/pedido/${details.orderId}`);
@@ -745,291 +860,311 @@ export default function Checkout() {
             />
           )}
         </div>
-      </CardFooter>
+      </CardContent>
     </Card>
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Link href="/carrinho">
-        <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-cart">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar ao Carrinho
-        </Button>
-      </Link>
-
-      <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <Form {...form}>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dados de Envio</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Nome</label>
-                      <Input
-                        value={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "-"}
-                        disabled
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Email</label>
-                      <Input value={user?.email || "-"} disabled className="mt-1" />
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="shippingAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Endereço de Envio</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Rua, número, código postal, cidade..."
-                            {...field}
-                            data-testid="input-shipping-address"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notas (opcional)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Instruções especiais de entrega..."
-                            {...field}
-                            data-testid="input-notes"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              <ShippingOptionsSection />
-              <ProductsSection />
-
-              <div className="lg:hidden space-y-4">
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Método de pagamento</div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {availablePaymentChoices.map((choice) => {
-                      const isSelected = paymentChoice === choice.value;
-
-                      // Map payment methods to icons and descriptions
-                      const methodInfo: Record<string, { icon: string; description: string }> = {
-                        paypal: { icon: "💳", description: "Pague com PayPal ou cartão" },
-                        stripe: { icon: "💳", description: "Pague com cartão de crédito" },
-                        eupago_multibanco: { icon: "🏦", description: "Referência Multibanco" },
-                        eupago_mbway: { icon: "📱", description: "Pagamento instantâneo MB WAY" },
-                      };
-
-                      const info = methodInfo[choice.value] || { icon: "💰", description: "" };
-
-                      return (
-                        <div
-                          key={choice.value}
-                          onClick={() => setPaymentChoice(choice.value)}
-                          className={`
-                            relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200
-                            active:scale-[0.98]
-                            ${isSelected
-                              ? "border-primary bg-primary/5 shadow-sm"
-                              : "border-border bg-background"
-                            }
-                          `}
-                          data-testid={`payment-card-mobile-${choice.value}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="text-3xl">{info.icon}</div>
-                            <div className="flex-1">
-                              <div className="font-semibold text-sm">{choice.label}</div>
-                              {info.description && (
-                                <div className="text-xs text-muted-foreground mt-0.5">{info.description}</div>
-                              )}
-                            </div>
-                            {isSelected && (
-                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="3"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="w-4 h-4"
-                                >
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {paymentChoice === "paypal" && (
-                    <PayPalButton
-                      cart={cartItems.map((item) => {
-                        const unitPrice =
-                          calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) /
-                          item.quantity;
-                        return {
-                          price: unitPrice,
-                          quantity: item.quantity,
-                          name: item.product.name,
-                        };
-                      })}
-                      shippingAddress={form.watch("shippingAddress")}
-                      notes={form.watch("notes") || ""}
-                      shippingOptionId={selectedShippingId || undefined}
-                      countryCode={countryCode}
-                      region={region}
-                      disabled={!canPay}
-                      onSuccess={(details) => {
-                        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                        toast({
-                          title: "Pagamento realizado com sucesso",
-                          description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
-                        });
-                        setLocation("/meus-pedidos");
-                      }}
-                      onError={(error) => {
-                        toast({
-                          title: "Erro no pagamento",
-                          description: error.message || "Não foi possível processar o pagamento.",
-                          variant: "destructive",
-                        });
-                      }}
-                    />
-                  )}
-
-                  {paymentChoice === "stripe" && paymentSetup?.stripe?.publishableKey && (
-                    <StripePayment
-                      publishableKey={paymentSetup.stripe.publishableKey}
-                      shippingAddress={form.watch("shippingAddress")}
-                      notes={form.watch("notes") || ""}
-                      shippingOptionId={selectedShippingId || undefined}
-                      countryCode={countryCode}
-                      region={region}
-                      items={
-                        useGuestCartItems
-                          ? cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity }))
-                          : undefined
-                      }
-                      disabled={!canPay}
-                      onSuccess={(details) => {
-                        if (isInternational) {
-                          guestCart.clearCart();
-                        }
-                        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                        toast({
-                          title: "Pagamento realizado com sucesso",
-                          description: `Pedido confirmado via Stripe. ID: ${details.paymentIntentId}`,
-                        });
-                        setLocation("/meus-pedidos");
-                      }}
-                      onError={(error) => {
-                        toast({
-                          title: "Erro no pagamento",
-                          description: error.message || "Não foi possível processar o pagamento.",
-                          variant: "destructive",
-                        });
-                      }}
-                    />
-                  )}
-
-                  {paymentChoice === "eupago_multibanco" && (
-                    <EupagoPayment
-                      method="multibanco"
-                      shippingAddress={form.watch("shippingAddress")}
-                      notes={form.watch("notes") || ""}
-                      shippingOptionId={selectedShippingId || undefined}
-                      countryCode={countryCode}
-                      region={region}
-                      items={eupagoItems}
-                      disabled={!canPay}
-                      onSuccess={(details) => {
-                        if (isInternational) {
-                          guestCart.clearCart();
-                        }
-                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                        toast({
-                          title: "Pedido criado",
-                          description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
-                        });
-                        setLocation(`/pedido/${details.orderId}`);
-                      }}
-                      onError={(error) => {
-                        toast({
-                          title: "Erro no pagamento",
-                          description: error.message || "Não foi possível processar o pedido.",
-                          variant: "destructive",
-                        });
-                      }}
-                    />
-                  )}
-
-                  {paymentChoice === "eupago_mbway" && (
-                    <EupagoPayment
-                      method="mbway"
-                      shippingAddress={form.watch("shippingAddress")}
-                      notes={form.watch("notes") || ""}
-                      shippingOptionId={selectedShippingId || undefined}
-                      countryCode={countryCode}
-                      region={region}
-                      items={eupagoItems}
-                      disabled={!canPay}
-                      onSuccess={(details) => {
-                        if (isInternational) {
-                          guestCart.clearCart();
-                        }
-                        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                        toast({
-                          title: "✅ Pedido criado com sucesso!",
-                          description: "🚨 Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
-                          duration: 8000,
-                        });
-                        setLocation(`/pedido/${details.orderId}`);
-                      }}
-                      onError={(error) => {
-                        toast({
-                          title: "Erro no pagamento",
-                          description: error.message || "Não foi possível processar o pedido.",
-                          variant: "destructive",
-                        });
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            </form>
-          </Form>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <Link href="/carrinho" className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm hover:bg-primary/20 transition-colors">
+            <ShoppingCart className="h-4 w-4" />
+            <span>Carrinho</span>
+          </Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium text-sm shadow-md">
+            <CreditCard className="h-4 w-4" />
+            <span>Checkout</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-muted-foreground font-medium text-sm">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Confirmado</span>
+          </div>
         </div>
 
-        <div>
-          <OrderSummaryCard />
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Finalizar Compra</h1>
+            <p className="text-muted-foreground mt-1">
+              Complete os dados abaixo para finalizar o seu pedido
+            </p>
+          </div>
+          <Link href="/carrinho">
+            <Button variant="outline" className="gap-2" data-testid="button-back-cart">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar ao Carrinho
+            </Button>
+          </Link>
+        </div>
+
+        {/* Savings Banner */}
+        {totalSavings > 0 && (
+          <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-emerald-500/20">
+                <Tag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="font-medium text-emerald-700 dark:text-emerald-300">
+                Está a poupar <span className="font-bold">{totalSavings.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}</span> com as nossas ofertas!
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Form {...form}>
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                {/* Shipping Data Card */}
+                <Card className="border-0 shadow-md overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      Dados de Envio
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-5">
+                    {/* User Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          Nome
+                        </label>
+                        <Input
+                          value={`${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "-"}
+                          disabled
+                          className="bg-muted/50"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          Email
+                        </label>
+                        <Input value={user?.email || "-"} disabled className="bg-muted/50" />
+                      </div>
+                    </div>
+
+                    {/* Shipping Address */}
+                    <FormField
+                      control={form.control}
+                      name="shippingAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            Endereço de Envio
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Rua, número, código postal, cidade..."
+                              className="min-h-[100px] resize-none"
+                              {...field}
+                              data-testid="input-shipping-address"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Notes */}
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            Notas (opcional)
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Instruções especiais de entrega..."
+                              className="min-h-[80px] resize-none"
+                              {...field}
+                              data-testid="input-notes"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
+                <ShippingOptionsSection />
+                <ProductsSection />
+
+                {/* Payment Methods - Mobile */}
+                <div className="lg:hidden space-y-4">
+                  <Card className="border-0 shadow-md overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                        Método de Pagamento
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      {availablePaymentChoices.map((choice) => (
+                        <PaymentMethodCard
+                          key={choice.value}
+                          choice={choice}
+                          isSelected={paymentChoice === choice.value}
+                        />
+                      ))}
+
+                      {paymentChoice === "paypal" && (
+                        <PayPalButton
+                          cart={cartItems.map((item) => {
+                            const unitPrice =
+                              calculateItemPrice(item.quantity, item.product.price, item.product.promotionRules) /
+                              item.quantity;
+                            return {
+                              price: unitPrice,
+                              quantity: item.quantity,
+                              name: item.product.name,
+                            };
+                          })}
+                          shippingAddress={form.watch("shippingAddress")}
+                          notes={form.watch("notes") || ""}
+                          shippingOptionId={selectedShippingId || undefined}
+                          countryCode={countryCode}
+                          region={region}
+                          disabled={!canPay}
+                          onSuccess={(details) => {
+                            queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                            toast({
+                              title: "Pagamento realizado com sucesso",
+                              description: `Pedido confirmado via PayPal. ID: ${details.paypalOrderId}`,
+                            });
+                            setLocation("/meus-pedidos");
+                          }}
+                          onError={(error) => {
+                            toast({
+                              title: "Erro no pagamento",
+                              description: error.message || "Não foi possível processar o pagamento.",
+                              variant: "destructive",
+                            });
+                          }}
+                        />
+                      )}
+
+                      {paymentChoice === "stripe" && paymentSetup?.stripe?.publishableKey && (
+                        <StripePayment
+                          publishableKey={paymentSetup.stripe.publishableKey}
+                          shippingAddress={form.watch("shippingAddress")}
+                          notes={form.watch("notes") || ""}
+                          shippingOptionId={selectedShippingId || undefined}
+                          countryCode={countryCode}
+                          region={region}
+                          items={
+                            useGuestCartItems
+                              ? cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity }))
+                              : undefined
+                          }
+                          disabled={!canPay}
+                          onSuccess={(details) => {
+                            if (isInternational) {
+                              guestCart.clearCart();
+                            }
+                            queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+                            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                            toast({
+                              title: "Pagamento realizado com sucesso",
+                              description: `Pedido confirmado via Stripe. ID: ${details.paymentIntentId}`,
+                            });
+                            setLocation("/meus-pedidos");
+                          }}
+                          onError={(error) => {
+                            toast({
+                              title: "Erro no pagamento",
+                              description: error.message || "Não foi possível processar o pagamento.",
+                              variant: "destructive",
+                            });
+                          }}
+                        />
+                      )}
+
+                      {paymentChoice === "eupago_multibanco" && (
+                        <EupagoPayment
+                          method="multibanco"
+                          shippingAddress={form.watch("shippingAddress")}
+                          notes={form.watch("notes") || ""}
+                          shippingOptionId={selectedShippingId || undefined}
+                          countryCode={countryCode}
+                          region={region}
+                          items={eupagoItems}
+                          disabled={!canPay}
+                          onSuccess={(details) => {
+                            if (isInternational) {
+                              guestCart.clearCart();
+                            }
+                            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                            toast({
+                              title: "Pedido criado",
+                              description: "Referência Multibanco gerada. Conclua o pagamento para confirmar.",
+                            });
+                            setLocation(`/pedido/${details.orderId}`);
+                          }}
+                          onError={(error) => {
+                            toast({
+                              title: "Erro no pagamento",
+                              description: error.message || "Não foi possível processar o pedido.",
+                              variant: "destructive",
+                            });
+                          }}
+                        />
+                      )}
+
+                      {paymentChoice === "eupago_mbway" && (
+                        <EupagoPayment
+                          method="mbway"
+                          shippingAddress={form.watch("shippingAddress")}
+                          notes={form.watch("notes") || ""}
+                          shippingOptionId={selectedShippingId || undefined}
+                          countryCode={countryCode}
+                          region={region}
+                          items={eupagoItems}
+                          disabled={!canPay}
+                          onSuccess={(details) => {
+                            if (isInternational) {
+                              guestCart.clearCart();
+                            }
+                            queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                            toast({
+                              title: "Pedido criado com sucesso!",
+                              description: "Abra o app MB WAY AGORA e confirme o pagamento. Tem apenas 5 minutos!",
+                              duration: 8000,
+                            });
+                            setLocation(`/pedido/${details.orderId}`);
+                          }}
+                          onError={(error) => {
+                            toast({
+                              title: "Erro no pagamento",
+                              description: error.message || "Não foi possível processar o pedido.",
+                              variant: "destructive",
+                            });
+                          }}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </form>
+            </Form>
+          </div>
+
+          <div>
+            <OrderSummaryCard />
+
+          </div>
         </div>
       </div>
     </div>
